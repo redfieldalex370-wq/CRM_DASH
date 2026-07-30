@@ -1,0 +1,55 @@
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hostinger-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20.19.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production site
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_AUTH_USERNAME_DOMAIN: ${{ secrets.VITE_AUTH_USERNAME_DOMAIN }}
+          VITE_DEFAULT_COMPANY_KEY: ${{ secrets.VITE_DEFAULT_COMPANY_KEY }}
+          VITE_APP_NAME: ${{ secrets.VITE_APP_NAME }}
+          VITE_REFRESH_SECONDS: ${{ secrets.VITE_REFRESH_SECONDS }}
+          VITE_N8N_WEBHOOK_URL: ${{ secrets.VITE_N8N_WEBHOOK_URL }}
+        run: npm run build
+
+      - name: Upload dist to Hostinger
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: 46.202.156.115
+          username: u352513768.lightsteelblue-herring-860802.hostingersite.com
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          port: 21
+          local-dir: ./dist/
+          server-dir: public_html/
