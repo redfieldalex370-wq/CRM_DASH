@@ -1,4 +1,4 @@
-name: Deploy to Hostinger
+name: Build Hostinger branch
 
 on:
   push:
@@ -7,20 +7,20 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: hostinger-production
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    name: Build and deploy
+  build:
+    name: Build static website
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
 
     steps:
-      - name: Checkout repository
+      - name: Checkout source
         uses: actions/checkout@v7
 
       - name: Set up Node.js
@@ -43,13 +43,16 @@ jobs:
           VITE_N8N_WEBHOOK_URL: ${{ secrets.VITE_N8N_WEBHOOK_URL }}
         run: npm run build
 
-      - name: Upload dist to Hostinger
-        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
-        with:
-          server: 46.202.156.115
-          username: u352513768.lightsteelblue-herring-860802.hostingersite.com
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
-          port: 21
-          local-dir: ./dist/
-          server-dir: public_html/
+      - name: Publish dist to hostinger branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd dist
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b hostinger
+          git add --all
+          git commit -m "Deploy ${GITHUB_SHA}"
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin hostinger
