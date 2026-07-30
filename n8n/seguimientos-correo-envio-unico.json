@@ -1,0 +1,208 @@
+{
+  "name": "CRM - Seguimientos correo ENVÍO ÚNICO",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -720,
+        300
+      ],
+      "id": "3d86d491-8539-48be-a9a7-6994c4c4f601",
+      "name": "Revisar fechas cada 5 min"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://nocbqbasbqkmezohhppd.supabase.co/rest/v1/rpc/claim_due_crm_reminders",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "TU_SERVICE_ROLE_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer TU_SERVICE_ROLE_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_email_to: 'redfieldalex370@gmail.com', p_limit: 100 } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -480,
+        300
+      ],
+      "id": "38c84d60-332c-49be-8395-f810adf51001",
+      "name": "Reservar seguimientos vencidos"
+    },
+    {
+      "parameters": {
+        "jsCode": "// GREEN CHIMP CRM | SEPARAR RECORDATORIOS RESERVADOS\n// Run Once for All Items.\n//\n// El RPC devuelve únicamente seguimientos que lograron reservarse.\n// Si el seguimiento ya fue reservado antes, no aparece y no se reenvía.\n\nconst rows = [];\n\nfor (const item of $input.all()) {\n  const value = item.json;\n\n  if (Array.isArray(value)) {\n    rows.push(...value);\n    continue;\n  }\n\n  if (Array.isArray(value?.body)) {\n    rows.push(...value.body);\n    continue;\n  }\n\n  if (value?.delivery_id) {\n    rows.push(value);\n  }\n}\n\nreturn rows\n  .filter((row) => row?.delivery_id && row?.id && row?.reminder_at)\n  .map((row, index) => ({\n    json: row,\n    pairedItem: { item: index }\n  }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        300
+      ],
+      "id": "34a6cd40-2a89-4c39-91cc-8a920ad5ce13",
+      "name": "Separar reservas nuevas"
+    },
+    {
+      "parameters": {
+        "jsCode": "// GREEN CHIMP CRM | PREPARAR TODOS LOS CORREOS RESERVADOS\n// Run Once for All Items.\n// Cada item ya tiene delivery_id, que identifica de forma única este envío.\n\nfunction text(value, fallback = '') {\n  const result = String(value ?? '').trim();\n  return result || fallback;\n}\n\nfunction escapeHtml(value) {\n  return text(value)\n    .replaceAll('&', '&amp;')\n    .replaceAll('<', '&lt;')\n    .replaceAll('>', '&gt;')\n    .replaceAll('\"', '&quot;')\n    .replaceAll(\"'\", '&#039;');\n}\n\nconst companyNames = {\n  'dr-woolrich': 'Dr. Woolrich',\n  'zenda-cafe': 'Zenda Café',\n  'especialidades-dentales': 'Especialidades Dentales',\n  'green-chimp-express': 'Green Chimp Express · Chatbot + Landing'\n};\n\nconst results = [];\n\nfor (const [index, item] of $input.all().entries()) {\n  const row = item.json || {};\n\n  if (!row.delivery_id || !row.id || !row.reminder_at) {\n    continue;\n  }\n\n  const raw =\n    row.raw_payload &&\n    typeof row.raw_payload === 'object' &&\n    !Array.isArray(row.raw_payload)\n      ? row.raw_payload\n      : {};\n\n  const companyName =\n    companyNames[row.company_key] ||\n    row.company_key ||\n    'CRM';\n\n  const contactName = text(\n    row.nombre_paciente,\n    text(\n      raw.nombre_completo ||\n      raw.nombre_contacto ||\n      raw.nombre_paciente,\n      'Contacto sin nombre'\n    )\n  );\n\n  const phone = text(\n    row.whatsapp_phone,\n    text(\n      raw.telefono ||\n      raw.whatsapp_phone,\n      'No registrado'\n    )\n  );\n\n  const product = text(\n    row.classification,\n    text(\n      raw.producto_interes,\n      text(row.service, 'Sin producto')\n    )\n  );\n\n  const business = text(\n    raw.nombre_negocio,\n    text(\n      raw.tipo_negocio,\n      'No registrado'\n    )\n  );\n\n  const assignedTo = text(\n    row.assigned_to,\n    'Sin responsable'\n  );\n\n  const message = text(\n    row.ultimo_mensaje_cliente,\n    text(\n      raw.ultimo_mensaje ||\n      raw.ultimo_mensaje_cli ||\n      raw.ultimo_mensaje_cliente,\n      'Sin mensaje registrado'\n    )\n  );\n\n  const reminderText = text(\n    row.reminder_text,\n    'Dar seguimiento al contacto.'\n  );\n\n  const reminderDate = new Date(row.reminder_at);\n\n  const formattedDate =\n    Number.isNaN(reminderDate.getTime())\n      ? text(row.reminder_at, 'Fecha no disponible')\n      : new Intl.DateTimeFormat('es-MX', {\n          timeZone: 'America/Mexico_City',\n          dateStyle: 'full',\n          timeStyle: 'short'\n        }).format(reminderDate);\n\n  const subject =\n    `Seguimiento pendiente: ${contactName} · ${companyName}`;\n\n  const html = `\n<div style=\"font-family:Arial,sans-serif;max-width:680px;margin:auto;color:#18202b\">\n  <div style=\"background:#17202a;color:white;padding:22px;border-radius:14px 14px 0 0\">\n    <div style=\"font-size:12px;letter-spacing:.08em;color:#8ad7ff\">GREEN CHIMP CRM</div>\n    <h2 style=\"margin:8px 0 0\">Seguimiento programado desde el CRM</h2>\n  </div>\n\n  <div style=\"border:1px solid #dbe3ea;border-top:0;padding:22px;border-radius:0 0 14px 14px\">\n    <p style=\"font-size:16px\">\n      <strong>${escapeHtml(reminderText)}</strong>\n    </p>\n\n    <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n      <tr>\n        <td style=\"padding:8px 0;color:#64748b\">Fecha elegida en la página</td>\n        <td style=\"padding:8px 0\"><strong>${escapeHtml(formattedDate)}</strong></td>\n      </tr>\n      <tr>\n        <td style=\"padding:8px 0;color:#64748b\">Empresa</td>\n        <td style=\"padding:8px 0\">${escapeHtml(companyName)}</td>\n      </tr>\n      <tr>\n        <td style=\"padding:8px 0;color:#64748b\">Contacto</td>\n        <td style=\"padding:8px 0\">${escapeHtml(contactName)}</td>\n      </tr>\n      <tr>\n        <td style=\"padding:8px 0;color:#64748b\">Teléfono</td>\n        <td style=\"padding:8px 0\">${escapeHtml(phone)}</td>\n      </tr>\n      <tr>\n        <td style=\"padding:8px 0;color:#64748b\">Producto / servicio</td>\n        <td style=\"padding:8px 0\">${escapeHtml(product)}</td>\n      </tr>\n      <tr>\n        <td style=\"padding:8px 0;color:#64748b\">Negocio</td>\n        <td style=\"padding:8px 0\">${escapeHtml(business)}</td>\n      </tr>\n      <tr>\n        <td style=\"padding:8px 0;color:#64748b\">Responsable</td>\n        <td style=\"padding:8px 0\">${escapeHtml(assignedTo)}</td>\n      </tr>\n    </table>\n\n    <div style=\"margin-top:18px;padding:14px;background:#f5f7fa;border-radius:10px\">\n      <div style=\"font-size:12px;color:#64748b;margin-bottom:6px\">ÚLTIMO MENSAJE</div>\n      <div>${escapeHtml(message)}</div>\n    </div>\n  </div>\n</div>`;\n\n  results.push({\n    json: {\n      ...row,\n      lead_id: row.id,\n      email_to: row.email_to || 'redfieldalex370@gmail.com',\n      email_subject: subject,\n      email_html: html\n    },\n    pairedItem: { item: index }\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "id": "4988f99b-597a-4ffc-bbe7-09514347be81",
+      "name": "Preparar correo con datos del lead"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email_to }}",
+        "subject": "={{ $json.email_subject }}",
+        "emailType": "html",
+        "message": "={{ $json.email_html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        300
+      ],
+      "id": "e935ddf0-1dd4-44c6-975a-921066b74a9c",
+      "name": "Enviar correo de seguimiento",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://nocbqbasbqkmezohhppd.supabase.co/rest/v1/rpc/complete_crm_reminder_delivery",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "TU_SERVICE_ROLE_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer TU_SERVICE_ROLE_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_delivery_id: $('Preparar correo con datos del lead').item.json.delivery_id, p_provider_message_id: String($json.id || $json.messageId || '') } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        480,
+        300
+      ],
+      "id": "94e2a847-2cb9-46d9-901a-3e42b9851a1a",
+      "name": "Confirmar envío único"
+    }
+  ],
+  "connections": {
+    "Revisar fechas cada 5 min": {
+      "main": [
+        [
+          {
+            "node": "Reservar seguimientos vencidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reservar seguimientos vencidos": {
+      "main": [
+        [
+          {
+            "node": "Separar reservas nuevas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separar reservas nuevas": {
+      "main": [
+        [
+          {
+            "node": "Preparar correo con datos del lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar correo con datos del lead": {
+      "main": [
+        [
+          {
+            "node": "Enviar correo de seguimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar correo de seguimiento": {
+      "main": [
+        [
+          {
+            "node": "Confirmar envío único",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "timezone": "America/Mexico_City",
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

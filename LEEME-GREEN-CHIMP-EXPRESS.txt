@@ -1,0 +1,30 @@
+GREEN CHIMP EXPRESS | INTEGRACIÓN EN CRM
+
+La página ahora soporta:
+- Dr. Woolrich
+- Zenda Café
+- Especialidades Dentales
+- Green Chimp Express
+
+GREEN CHIMP EXPRESS
+Company key: green-chimp-express
+Usuario de portal: admin_express
+Identidad técnica: admin_express@usuarios.greenchimp.mx
+Contraseña sugerida para el usuario demo: demo123
+
+Antes de entrar:
+1. En Supabase > Authentication > Users crea admin_express@usuarios.greenchimp.mx con la contraseña elegida y Auto Confirm User.
+2. Ejecuta supabase/activar-green-chimp-express.sql.
+3. Sube el contenido de dist/ a public_html en Hostinger.
+
+Etapas:
+- contactos_nuevos
+- calificando
+- cotizado
+- objecion_precio
+- listo_para_pago
+- contactado
+- cliente
+- perdido
+
+El tablero muestra CHATBOT / LANDING y, cuando raw_payload lo contiene, también negocio, tipo de negocio, objeciones, listo para pagar, requiere asesor, motivo de escalación y última respuesta del bot.

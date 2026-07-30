@@ -1,0 +1,99 @@
+{
+  "name": "Zenda Cafe | Sincronizar lead con CRM",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "zenda-crm-sync",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0c3dbd13-1bba-4b6e-854f-93607ddd1001",
+      "name": "Entrada Zenda CRM",
+      "webhookId": "zenda-crm-sync"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ZENDA CAFÉ | PREPARAR LEAD PARA CRM\n// Coloca este nodo después de \"Validar Alerta Asesor\" o del\n// último parser que ya reúna la respuesta y los datos del contacto.\n\nconst data = $json || {};\n\nfunction text(value) {\n  if (value === undefined || value === null) return '';\n  return String(value).trim();\n}\n\nfunction bool(value) {\n  if (typeof value === 'boolean') return value;\n  if (typeof value === 'number') return value === 1;\n  return ['true', '1', 'si', 'sí', 'yes'].includes(text(value).toLowerCase());\n}\n\nfunction first(...values) {\n  for (const value of values) {\n    const result = text(value);\n    if (result) return result;\n  }\n  return '';\n}\n\nfunction digits(value) {\n  const result = text(value).replace(/\\D/g, '');\n  return result || '';\n}\n\nfunction normalize(value) {\n  return text(value)\n    .toUpperCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nfunction subscriberNumber(value) {\n  const match = digits(value).match(/\\d+/);\n  if (!match) return null;\n  const number = Number(match[0]);\n  return Number.isSafeInteger(number) ? number : null;\n}\n\n// ------------------------------------------------------\n// IDENTIDAD DEL CONTACTO\n// ------------------------------------------------------\nconst subscriberId = subscriberNumber(first(\n  data.manychat_id,\n  data.manychatId,\n  data.chat_id,\n  data.subscriber_id,\n  data.webhook_subscriber_id,\n  data.id\n));\n\nif (!subscriberId) {\n  throw new Error('No se encontró un manychat_id, chat_id o subscriber_id válido.');\n}\n\nconst phone = digits(first(\n  data.telefono_cliente,\n  data.telefono,\n  data.whatsapp_phone,\n  data.phone,\n  data.userphone\n));\n\nconst name = first(\n  data.nombre_cliente,\n  data.nombre,\n  data.lead_name,\n  data.name,\n  data.first_name,\n  'Contacto ' + String(subscriberId).slice(-4)\n);\n\nconst clientMessage = first(\n  data.ultimo_mensaje_cli,\n  data.ultimo_mensaje_cliente,\n  data.text,\n  data.input,\n  data.mensaje,\n  data.last_input_text,\n  data.raw_input?.last_input_text,\n  data.raw_input?.text\n);\n\n// ------------------------------------------------------\n// CLASIFICACIÓN: TIENDA / COFFEE BREAK / MERCADITO\n// ------------------------------------------------------\nconst moduleValue = normalize(first(\n  data.modulo_seleccionado,\n  data.modulo_sugerido,\n  data.origen_modulo,\n  data.ruta\n));\n\nlet classification = '';\n\nif (moduleValue.includes('MERCADITO')) {\n  classification = 'MERCADITO';\n} else if (\n  moduleValue.includes('EVENTOS') ||\n  moduleValue.includes('COFFEE BREAK') ||\n  moduleValue.includes('COFFEE_BREAK')\n) {\n  classification = 'COFFEE BREAK';\n} else if (moduleValue.includes('TIENDA')) {\n  classification = 'TIENDA';\n}\n\n// Respaldo por palabras del mensaje cuando no llegó módulo.\nconst messageNormalized = normalize(clientMessage);\nif (!classification) {\n  if (/MERCADITO|CAFE EN GRANO|SALSA|FRIJOLES/.test(messageNormalized)) {\n    classification = 'MERCADITO';\n  } else if (/COFFEE BREAK|EVENTO|BODA|FIESTA|COTIZACION|COTIZAR|BARRA DE CAFE/.test(messageNormalized)) {\n    classification = 'COFFEE BREAK';\n  } else if (/MENU|CARTA|PEDIDO|BEBIDA|COMIDA|CUPON|UBER EATS|DIDI|RAPPI/.test(messageNormalized)) {\n    classification = 'TIENDA';\n  }\n}\n\n// ------------------------------------------------------\n// ETAPA AUTOMÁTICA\n// ------------------------------------------------------\nconst flowStatus = normalize(data.flow_status);\nconst asksHuman =\n  bool(data.requiere_asesor) ||\n  flowStatus === 'TRANSFERIR_HUMANO';\n\nconst asksMenu =\n  bool(data.enviar_menu_pdf) ||\n  bool(data.enviar_menu) ||\n  bool(data.enviar_menu_imagen) ||\n  bool(data.menu_zenda) ||\n  flowStatus === 'OFRECER_MENU' ||\n  /\\bMENU\\b|\\bCARTA\\b|CATALOGO|HABLAR CON|ASESOR|PERSONA|ENCARGADO|EMPLEADO/.test(messageNormalized);\n\nconst existsBefore =\n  data.existe === true ||\n  bool(data.existe) ||\n  Boolean(text(data.etapa_actual || data.kanban_stage));\n\nlet kanbanStage = 'contactos_nuevos';\n\nif (asksHuman || asksMenu) {\n  kanbanStage = 'pidio_menu_asesor';\n} else if (existsBefore) {\n  kanbanStage = 'pregunta_adicional';\n}\n\nconst service = first(\n  data.intencion,\n  data.tipo_evento,\n  data.producto,\n  data.notas,\n  data.modulo_sugerido,\n  data.modulo_seleccionado\n);\n\nreturn [{\n  json: {\n    p_subscriber_id: subscriberId,\n    p_whatsapp_phone: phone || null,\n    p_nombre_paciente: name,\n    p_ultimo_mensaje_cliente: clientMessage || null,\n    p_classification: classification || null,\n    p_service: service || null,\n    p_kanban_stage: kanbanStage,\n    p_source: 'WhatsApp',\n    p_last_activity_at: new Date().toISOString(),\n    p_raw_payload: data\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        0
+      ],
+      "id": "0c3dbd13-1bba-4b6e-854f-93607ddd1002",
+      "name": "Preparar Lead Zenda CRM"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://nocbqbasbqkmezohhppd.supabase.co/rest/v1/rpc/upsert_zenda_crm_lead",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "TU_SERVICE_ROLE_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer TU_SERVICE_ROLE_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        560,
+        0
+      ],
+      "id": "0c3dbd13-1bba-4b6e-854f-93607ddd1003",
+      "name": "Guardar Lead Zenda en Supabase"
+    }
+  ],
+  "connections": {
+    "Entrada Zenda CRM": {
+      "main": [
+        [
+          {
+            "node": "Preparar Lead Zenda CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Lead Zenda CRM": {
+      "main": [
+        [
+          {
+            "node": "Guardar Lead Zenda en Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

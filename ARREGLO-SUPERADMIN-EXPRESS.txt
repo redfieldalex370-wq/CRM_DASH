@@ -1,0 +1,19 @@
+ARREGLO SUPERADMIN | GREEN CHIMP EXPRESS
+
+1. Abre Supabase > SQL Editor.
+2. Ejecuta:
+   supabase/activar-green-chimp-express.sql
+3. Al final debe aparecer una fila:
+   login_username = superadmin
+   company_key = green-chimp-express
+   active = true
+4. Cierra sesión del CRM y vuelve a entrar.
+5. En el selector superior aparecerá:
+   Green Chimp Express · Chatbot + Landing
+6. Dentro de ese tablero tendrás el filtro:
+   Todos: Chatbot + Landing
+   Chatbot Express
+   Landing Express
+
+Chatbot y Landing comparten el mismo pipeline y se distinguen mediante
+classification = CHATBOT o LANDING.

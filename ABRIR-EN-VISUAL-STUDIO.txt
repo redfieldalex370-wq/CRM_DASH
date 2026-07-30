@@ -1,0 +1,74 @@
+GREEN CHIMP CRM | RAÍZ PARA DESARROLLO LOCAL
+
+Esta carpeta contiene el proyecto React + Vite completo.
+No es solamente el build de Hostinger.
+
+INICIO RÁPIDO
+
+1. Abre esta carpeta en Visual Studio Code:
+   Archivo > Abrir carpeta
+
+   También puedes abrir la carpeta directamente desde una terminal:
+   code .
+
+2. Abre una terminal dentro de la raíz.
+
+3. Verifica Node.js:
+   node -v
+   npm -v
+
+   Recomendado por package.json:
+   Node >= 20.19
+   npm >= 10
+
+4. Instala dependencias:
+   npm install
+
+5. Inicia el servidor local:
+   npm run dev
+
+6. Abre la dirección que muestre Vite, normalmente:
+   http://localhost:5173
+
+COMPILAR PARA HOSTINGER
+
+npm run build
+
+El resultado aparecerá en:
+   dist/
+
+CONFIGURACIÓN
+
+.env.local contiene la configuración local de Supabase usada por el frontend.
+No coloques nunca service_role ni claves secretas en archivos VITE_*.
+
+EMPRESAS INCLUIDAS
+
+- Dr. Woolrich
+- Zenda Café
+- Especialidades Dentales
+- Green Chimp Express
+
+GREEN CHIMP EXPRESS
+
+Etapas:
+- contactos_nuevos
+- calificando
+- cotizado
+- objecion_precio
+- listo_para_pago
+- contactado
+- cliente
+- perdido
+
+Etiquetas comerciales:
+- CHATBOT
+- LANDING
+
+SQL de activación:
+   supabase/activar-green-chimp-express.sql
+
+NOTA
+
+No se incluye node_modules para mantener el ZIP ligero.
+Ejecuta npm install después de abrir el proyecto.

@@ -1,0 +1,23 @@
+GREEN CHIMP CRM | SEGUIMIENTO MANUAL + CORREO ÚNICO
+
+La fecha y hora se capturan exclusivamente desde la página:
+1. Abre una tarjeta.
+2. Pulsa “📅 Programar seguimiento”.
+3. Selecciona fecha y hora.
+4. Escribe una nota opcional.
+5. Guarda los cambios.
+
+Supabase guarda:
+- reminder_at
+- reminder_text
+- reminder_completed
+- reminder_sent_at
+
+Para impedir duplicados, ejecuta:
+  supabase/activar-envio-unico-recordatorios.sql
+
+Después importa en n8n:
+  n8n/seguimientos-correo-envio-unico.json
+
+Configura la Service Role Key solo dentro de n8n y selecciona Gmail.
+El mismo lead + la misma fecha + el mismo correo solo se envían una vez.

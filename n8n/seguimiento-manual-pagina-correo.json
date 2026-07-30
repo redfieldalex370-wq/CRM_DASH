@@ -1,0 +1,207 @@
+{
+  "name": "CRM - Seguimiento manual desde página por correo",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -720,
+        300
+      ],
+      "id": "3d86d491-8539-48be-a9a7-6994c4c4f601",
+      "name": "Revisar fechas cada 5 min"
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://nocbqbasbqkmezohhppd.supabase.co/rest/v1/crm_leads?select=id,company_key,subscriber_id,whatsapp_phone,nombre_paciente,service,classification,assigned_to,ultimo_mensaje_cliente,reminder_text,reminder_at,raw_payload&reminder_completed=eq.false&reminder_at=not.is.null&reminder_at=lte.' + encodeURIComponent($now.toISO()) + '&order=reminder_at.asc' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "TU_SERVICE_ROLE_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer TU_SERVICE_ROLE_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -480,
+        300
+      ],
+      "id": "45676268-5bb9-4380-a370-41c0e09d7863",
+      "name": "Consultar fechas elegidas en CRM"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convierte la respuesta REST de Supabase en un item por seguimiento.\nconst output = [];\n\nfor (const item of $input.all()) {\n  const value = item.json;\n  const rows = Array.isArray(value)\n    ? value\n    : Array.isArray(value?.body)\n      ? value.body\n      : value?.id\n        ? [value]\n        : [];\n\n  for (const row of rows) {\n    if (row?.id && row?.reminder_at) {\n      output.push({ json: row });\n    }\n  }\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        300
+      ],
+      "id": "1c692813-d137-4c6e-a366-5f112ba60947",
+      "name": "Separar seguimientos pendientes"
+    },
+    {
+      "parameters": {
+        "jsCode": "// GREEN CHIMP CRM | PREPARAR CORREO DE SEGUIMIENTO MANUAL\n// La fecha proviene exclusivamente de crm_leads.reminder_at,\n// capturada por el usuario en la página del CRM.\n\nconst row = $json || {};\nconst raw = row.raw_payload && typeof row.raw_payload === 'object'\n  ? row.raw_payload\n  : {};\n\nfunction text(value, fallback = '') {\n  const result = String(value ?? '').trim();\n  return result || fallback;\n}\n\nfunction escapeHtml(value) {\n  return text(value)\n    .replaceAll('&', '&amp;')\n    .replaceAll('<', '&lt;')\n    .replaceAll('>', '&gt;')\n    .replaceAll('\"', '&quot;')\n    .replaceAll(\"'\", '&#039;');\n}\n\nconst companyNames = {\n  'dr-woolrich': 'Dr. Woolrich',\n  'zenda-cafe': 'Zenda Café',\n  'especialidades-dentales': 'Especialidades Dentales',\n  'green-chimp-express': 'Green Chimp Express · Chatbot + Landing'\n};\n\nconst companyName = companyNames[row.company_key] || row.company_key || 'CRM';\nconst contactName = text(row.nombre_paciente, text(raw.nombre_completo, 'Contacto sin nombre'));\nconst phone = text(row.whatsapp_phone, text(raw.telefono, 'No registrado'));\nconst product = text(row.classification, text(raw.producto_interes, text(row.service, 'Sin producto')));\nconst business = text(raw.nombre_negocio, text(raw.tipo_negocio, 'No registrado'));\nconst assignedTo = text(row.assigned_to, 'Sin responsable');\nconst message = text(row.ultimo_mensaje_cliente, text(raw.ultimo_mensaje, 'Sin mensaje registrado'));\nconst reminderText = text(row.reminder_text, 'Dar seguimiento al contacto.');\n\nconst reminderDate = new Date(row.reminder_at);\nconst formattedDate = Number.isNaN(reminderDate.getTime())\n  ? row.reminder_at\n  : new Intl.DateTimeFormat('es-MX', {\n      timeZone: 'America/Mexico_City',\n      dateStyle: 'full',\n      timeStyle: 'short'\n    }).format(reminderDate);\n\nconst subject = `Seguimiento pendiente: ${contactName} · ${companyName}`;\n\nconst html = `\n<div style=\"font-family:Arial,sans-serif;max-width:680px;margin:auto;color:#18202b\">\n  <div style=\"background:#17202a;color:white;padding:22px;border-radius:14px 14px 0 0\">\n    <div style=\"font-size:12px;letter-spacing:.08em;color:#8ad7ff\">GREEN CHIMP CRM</div>\n    <h2 style=\"margin:8px 0 0\">Seguimiento programado desde el CRM</h2>\n  </div>\n  <div style=\"border:1px solid #dbe3ea;border-top:0;padding:22px;border-radius:0 0 14px 14px\">\n    <p style=\"font-size:16px\"><strong>${escapeHtml(reminderText)}</strong></p>\n    <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n      <tr><td style=\"padding:8px 0;color:#64748b\">Fecha elegida en la página</td><td style=\"padding:8px 0\"><strong>${escapeHtml(formattedDate)}</strong></td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b\">Empresa</td><td style=\"padding:8px 0\">${escapeHtml(companyName)}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b\">Contacto</td><td style=\"padding:8px 0\">${escapeHtml(contactName)}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b\">Teléfono</td><td style=\"padding:8px 0\">${escapeHtml(phone)}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b\">Producto / servicio</td><td style=\"padding:8px 0\">${escapeHtml(product)}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b\">Negocio</td><td style=\"padding:8px 0\">${escapeHtml(business)}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b\">Responsable</td><td style=\"padding:8px 0\">${escapeHtml(assignedTo)}</td></tr>\n    </table>\n    <div style=\"margin-top:18px;padding:14px;background:#f5f7fa;border-radius:10px\">\n      <div style=\"font-size:12px;color:#64748b;margin-bottom:6px\">ÚLTIMO MENSAJE</div>\n      <div>${escapeHtml(message)}</div>\n    </div>\n  </div>\n</div>`;\n\nreturn [{\n  json: {\n    ...row,\n    lead_id: row.id,\n    email_to: 'redfieldalex370@gmail.com',\n    email_subject: subject,\n    email_html: html\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "id": "4988f99b-597a-4ffc-bbe7-09514347be81",
+      "name": "Preparar correo con datos del lead"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email_to }}",
+        "subject": "={{ $json.email_subject }}",
+        "emailType": "html",
+        "message": "={{ $json.email_html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        300
+      ],
+      "id": "e935ddf0-1dd4-44c6-975a-921066b74a9c",
+      "name": "Enviar correo a redfieldalex370"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ 'https://nocbqbasbqkmezohhppd.supabase.co/rest/v1/crm_leads?id=eq.' + $('Preparar correo con datos del lead').item.json.lead_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "TU_SERVICE_ROLE_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer TU_SERVICE_ROLE_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { reminder_completed: true, reminder_sent_at: $now.toISO() } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        480,
+        300
+      ],
+      "id": "6bfe319a-b9ba-40b4-9b7e-72a184820565",
+      "name": "Marcar correo enviado"
+    }
+  ],
+  "connections": {
+    "Revisar fechas cada 5 min": {
+      "main": [
+        [
+          {
+            "node": "Consultar fechas elegidas en CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar fechas elegidas en CRM": {
+      "main": [
+        [
+          {
+            "node": "Separar seguimientos pendientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separar seguimientos pendientes": {
+      "main": [
+        [
+          {
+            "node": "Preparar correo con datos del lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar correo con datos del lead": {
+      "main": [
+        [
+          {
+            "node": "Enviar correo a redfieldalex370",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar correo a redfieldalex370": {
+      "main": [
+        [
+          {
+            "node": "Marcar correo enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "timezone": "America/Mexico_City",
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

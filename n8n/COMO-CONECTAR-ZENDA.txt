@@ -1,0 +1,49 @@
+ZENDA CAFÉ | CONEXIÓN CON EL CRM
+
+OPCIÓN RECOMENDADA DENTRO DEL FLUJO EXISTENTE
+
+1. Agrega un nodo Code después de "Validar Alerta Asesor".
+2. Pega el contenido de Preparar-Lead-Zenda-CRM.js.
+3. Agrega un nodo HTTP Request después del Code.
+4. Configura:
+
+Método:
+POST
+
+URL:
+https://nocbqbasbqkmezohhppd.supabase.co/rest/v1/rpc/upsert_zenda_crm_lead
+
+Headers:
+apikey = TU_SERVICE_ROLE_KEY
+Authorization = Bearer TU_SERVICE_ROLE_KEY
+Content-Type = application/json
+
+Body Content Type:
+JSON
+
+Specify Body:
+Using JSON
+
+JSON Body:
+={{ $json }}
+
+La service_role se coloca únicamente en n8n. Nunca en la página web.
+
+ETAPAS AUTOMÁTICAS
+- contactos_nuevos
+- pregunta_adicional
+- pidio_menu_asesor
+
+CLASIFICACIÓN
+- TIENDA
+- COFFEE BREAK
+- MERCADITO
+
+El administrador controla:
+- contactado
+- cotizacion_formal_mandada
+- acepto_cotizacion
+- cliente
+
+Cuando una tarjeta entra a una etapa administrativa, stage_locked queda en true
+y n8n ya no puede regresarla a las etapas automáticas.

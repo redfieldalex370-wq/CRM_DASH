@@ -1,0 +1,27 @@
+GREEN CHIMP CRM | SEGUIMIENTO MANUAL DESDE LA PÁGINA
+
+FUENTE ÚNICA DE LA FECHA
+La fecha y hora se seleccionan manualmente dentro de la ficha del contacto.
+No se toma fecha de Google Sheets, Excel, seguimiento_dia_1, seguimiento_dia_3 ni seguimiento_dia_7.
+
+FLUJO
+1. Abrir una tarjeta del CRM.
+2. Ir a Seguimiento manual.
+3. Elegir Fecha y hora del seguimiento.
+4. Escribir una nota opcional.
+5. Pulsar Guardar cambios.
+6. La página guarda reminder_at, reminder_text y reminder_completed=false en Supabase.
+7. n8n revisa cada 5 minutos.
+8. Al llegar la fecha, envía el correo a redfieldalex370@gmail.com.
+9. Después marca reminder_completed=true y guarda reminder_sent_at.
+
+INSTALACIÓN
+1. Ejecutar supabase/activar-seguimiento-manual-desde-pagina.sql.
+2. Importar n8n/seguimiento-manual-pagina-correo.json.
+3. En los dos nodos HTTP sustituir TU_SERVICE_ROLE_KEY.
+4. En el nodo Gmail elegir una credencial de Gmail OAuth2.
+5. Activar el workflow.
+
+SEGURIDAD
+La Service Role Key solo debe existir dentro de n8n.
+Nunca debe ponerse en .env, React, Hostinger o GitHub.

@@ -1,0 +1,35 @@
+CRM KANBAN | ZENDA CAFÉ
+
+USUARIO VISIBLE:
+admin_zenda
+
+IDENTIDAD TÉCNICA EN SUPABASE AUTH:
+admin_zenda@usuarios.greenchimp.mx
+
+CONTRASEÑA INICIAL SUGERIDA:
+demo123
+
+ORDEN:
+1. Crear el usuario técnico en Supabase Authentication con Auto Confirm User.
+2. Ejecutar supabase/activar-zenda-cafe.sql.
+3. Ejecutar supabase/upsert-zenda-cafe.sql.
+4. Conectar n8n usando n8n/zenda-crm-sync-subflujo.json o el código Preparar-Lead-Zenda-CRM.js.
+5. Para Hostinger, subir únicamente el contenido de dist/ a public_html.
+
+ETAPAS AUTOMÁTICAS:
+- Contactos nuevos
+- Pregunta algo adicional
+- Pidió menú / pidió hablar con asesor
+
+ETAPAS MANUALES:
+- Contactado
+- Cotización formal mandada
+- Aceptó cotización
+- Cliente
+
+CLASIFICACIONES DE TARJETA:
+- TIENDA
+- COFFEE BREAK
+- MERCADITO
+
+Recordatorios e Historial fueron retirados globalmente del cajón del lead.

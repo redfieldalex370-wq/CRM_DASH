@@ -1,0 +1,48 @@
+GREEN CHIMP CRM - USUARIOS Y CONTRASEÑAS
+
+ACCESOS VISIBLES EN LA PAGINA:
+
+Dr. Woolrich
+Usuario: admin_woolrich
+Contraseña inicial: demo123
+
+Especialidades Dentales
+Usuario: admin_dental
+Contraseña inicial: demo123
+
+Superadministrador
+Usuario: superadmin
+Contraseña inicial: demo123
+
+ORDEN DE INSTALACION:
+
+1. En Supabase SQL Editor ejecuta:
+   supabase/schema.sql
+
+2. En Supabase Authentication > Users crea las tres identidades
+   técnicas indicadas en README.md y activa Auto Confirm User.
+
+3. Ejecuta:
+   supabase/configurar-usuarios-demo.sql
+
+4. Abre .env.production y pega:
+   - VITE_SUPABASE_URL
+   - VITE_SUPABASE_PUBLISHABLE_KEY
+
+5. Conserva:
+   VITE_AUTH_USERNAME_DOMAIN=usuarios.greenchimp.mx
+
+6. Ejecuta:
+   CONSTRUIR-PARA-WEB.bat
+
+7. Sube a Hostinger todo el contenido de la carpeta dist.
+
+8. En n8n importa:
+   n8n/woolrich-kanban-sheets-supabase.json
+
+IMPORTANTE:
+- El cliente solo ve usuario y contraseña.
+- La Publishable Key va en .env.production.
+- La service_role se usa solamente dentro de n8n.
+- No subas node_modules a Hostinger.
+- Cambia demo123 antes de entregar el sistema.

@@ -1,0 +1,16 @@
+VALIDACIÓN DEL PAQUETE
+
+La estructura y los archivos fuente fueron revisados.
+La compilación automática en este entorno no pudo completarse porque el registro
+interno de npm no tenía disponible vite@8.1.5 (error 404 del registry interno).
+
+En tu equipo ejecuta:
+  npm install
+  npm run dev
+
+Para producción:
+  npm run build
+
+Recomendado:
+  Node.js 22 LTS
+  npm 10 o superior

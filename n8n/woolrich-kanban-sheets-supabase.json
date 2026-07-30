@@ -1,0 +1,126 @@
+{
+  "name": "Woolrich | Google Sheets a CRM Kanban",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "1N_ozK3JJsqhhHW0I2zzxC71EMnoAmvi1eFOhxRZtNMc",
+          "mode": "list",
+          "cachedResultName": "Woolrich_N8N",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1N_ozK3JJsqhhHW0I2zzxC71EMnoAmvi1eFOhxRZtNMc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 816136571,
+          "mode": "list",
+          "cachedResultName": "CLIENTES",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1N_ozK3JJsqhhHW0I2zzxC71EMnoAmvi1eFOhxRZtNMc/edit#gid=816136571"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ddff84ee-f43a-48e2-bb7d-aaca75b5c1d7",
+      "name": "Google Sheets Trigger",
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "lVpXW6stCuDKI2WE",
+          "name": "Google Sheets Trigger account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// WOOLRICH | PREPARAR SOLO LOS DATOS NECESARIOS PARA EL KANBAN\n\nconst row = $json;\n\nfunction hasValue(value) {\n  return value !== undefined && value !== null && String(value).trim() !== '';\n}\n\nfunction pick(...keys) {\n  for (const key of keys) {\n    if (hasValue(row[key])) return row[key];\n  }\n  return null;\n}\n\nfunction text(value) {\n  if (!hasValue(value)) return null;\n  return String(value).trim();\n}\n\nfunction digits(value) {\n  const valueText = text(value);\n  return valueText ? valueText.replace(/\\D/g, '') : null;\n}\n\nfunction normalize(value) {\n  return String(value ?? '')\n    .trim()\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/[_-]+/g, ' ')\n    .replace(/\\s+/g, ' ');\n}\n\nfunction excelSerialToIso(serial) {\n  const milliseconds = Math.round((serial - 25569) * 86400 * 1000);\n  return new Date(milliseconds).toISOString();\n}\n\nfunction sheetDateToIso(value) {\n  if (!hasValue(value)) return null;\n\n  if (typeof value === 'number') {\n    if (value > 20000 && value < 100000) {\n      return excelSerialToIso(value);\n    }\n\n    const parsedNumberDate = new Date(value);\n    if (!Number.isNaN(parsedNumberDate.getTime())) {\n      return parsedNumberDate.toISOString();\n    }\n  }\n\n  const raw = String(value).trim();\n\n  if (/^\\d+(?:\\.\\d+)?$/.test(raw)) {\n    const numeric = Number(raw);\n\n    if (numeric > 20000 && numeric < 100000) {\n      return excelSerialToIso(numeric);\n    }\n  }\n\n  const spanishDate = raw.match(\n    /^(\\d{1,2})[/-](\\d{1,2})[/-](\\d{4})(?:[,\\s]+(\\d{1,2}):(\\d{2})(?::(\\d{2}))?\\s*(a\\.?\\s*m\\.?|p\\.?\\s*m\\.?)?)?$/i\n  );\n\n  if (spanishDate) {\n    let [, day, month, year, hour = '0', minute = '0', second = '0', meridiem = ''] = spanishDate;\n    let parsedHour = Number(hour);\n\n    const normalizedMeridiem = normalize(meridiem).replace(/\\s/g, '');\n\n    if (normalizedMeridiem.startsWith('p') && parsedHour < 12) parsedHour += 12;\n    if (normalizedMeridiem.startsWith('a') && parsedHour === 12) parsedHour = 0;\n\n    const isoWithMexicoOffset =\n      `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` +\n      `T${String(parsedHour).padStart(2, '0')}:${String(minute).padStart(2, '0')}` +\n      `:${String(second).padStart(2, '0')}-06:00`;\n\n    const parsed = new Date(isoWithMexicoOffset);\n    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();\n  }\n\n  const parsed = new Date(raw);\n  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();\n}\n\nfunction resolveStage(sheetStage, appointmentStatus, lastClientMessage) {\n  const aliases = {\n    'contacto nuevo': 'contactos_nuevos',\n    'contactos nuevos': 'contactos_nuevos',\n    'contactos nuevo': 'contactos_nuevos',\n    'contactos_nuevos': 'contactos_nuevos',\n    'nuevo': 'contactos_nuevos',\n\n    'pregunto por fechas': 'preguntaron_fechas',\n    'preguntaron por fechas': 'preguntaron_fechas',\n    'preguntaron fechas': 'preguntaron_fechas',\n    'preguntaron_fechas': 'preguntaron_fechas',\n    'fechas': 'preguntaron_fechas',\n\n    'cita agendada': 'cita_agendada',\n    'cita confirmada': 'cita_agendada',\n    'cita_agendada': 'cita_agendada',\n\n    'asistio a consulta': 'asistio_consulta',\n    'asistio consulta': 'asistio_consulta',\n    'asistio_consulta': 'asistio_consulta',\n\n    'cirugia agendada': 'cirugia_agendada',\n    'cirugia_agendada': 'cirugia_agendada',\n\n    'cita cancelada': 'cita_cancelada',\n    'cancelada': 'cita_cancelada',\n    'cita_cancelada': 'cita_cancelada'\n  };\n\n  const stageFromSheet = aliases[normalize(sheetStage)];\n  if (stageFromSheet) return stageFromSheet;\n\n  const normalizedStatus = normalize(appointmentStatus);\n  if (\n    normalizedStatus.includes('cita confirmada') ||\n    normalizedStatus.includes('cita actualizada')\n  ) {\n    return 'cita_agendada';\n  }\n\n  const normalizedMessage = normalize(lastClientMessage);\n  if (\n    /\\b(fecha|fechas|dia|dias|horario|horarios|hora|disponibilidad|manana|tarde|noche)\\b/.test(\n      normalizedMessage\n    )\n  ) {\n    return 'preguntaron_fechas';\n  }\n\n  return 'contactos_nuevos';\n}\n\nconst subscriberIdRaw = pick('subscriber_id', 'Subscriber ID');\nconst subscriberId = Number(subscriberIdRaw);\n\nif (!Number.isFinite(subscriberId)) {\n  throw new Error('La fila no tiene un subscriber_id válido.');\n}\n\nconst lastActivityRaw = pick('last_activity_timestamp');\nconst lastActivityTimestamp = hasValue(lastActivityRaw)\n  ? Number(lastActivityRaw)\n  : null;\n\nconst statusCita = text(pick('Status cita', 'status_cita'));\nconst lastClientMessage = text(\n  pick('ultimo_mensaje_cli', 'ultimo_mensaje_cliente')\n);\nconst sheetStage = text(pick('etapa', 'Etapa'));\n\nreturn [\n  {\n    json: {\n      p_company_key: 'dr-woolrich',\n      p_subscriber_id: subscriberId,\n      p_whatsapp_phone: digits(pick('whatsapp_phone', 'Telefono', 'Teléfono')),\n      p_nombre_paciente: text(\n        pick('Nombre del paciente', 'nombre_paciente', 'Nombre')\n      ),\n      p_fecha_cita: sheetDateToIso(\n        pick('Fecha de la cita', 'fecha_cita')\n      ),\n      p_status_cita: statusCita,\n      p_last_activity_timestamp:\n        Number.isFinite(lastActivityTimestamp) ? lastActivityTimestamp : null,\n      p_last_activity_at:\n        Number.isFinite(lastActivityTimestamp) && lastActivityTimestamp > 0\n          ? new Date(lastActivityTimestamp * 1000).toISOString()\n          : null,\n      p_ultimo_mensaje_cliente: lastClientMessage,\n      p_kanban_stage: resolveStage(\n        sheetStage,\n        statusCita,\n        lastClientMessage\n      )\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        0
+      ],
+      "id": "c074dcc1-c769-44aa-a3bc-f6f45c11ed11",
+      "name": "Preparar Lead Kanban"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://TU_PROJECT_REF.supabase.co/rest/v1/rpc/upsert_crm_lead_from_sheet",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "TU_SERVICE_ROLE_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer TU_SERVICE_ROLE_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        576,
+        0
+      ],
+      "id": "38259ab5-714e-4329-adc8-cef29fe0f8e2",
+      "name": "Upsert CRM Lead"
+    }
+  ],
+  "connections": {
+    "Google Sheets Trigger": {
+      "main": [
+        [
+          {
+            "node": "Preparar Lead Kanban",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Lead Kanban": {
+      "main": [
+        [
+          {
+            "node": "Upsert CRM Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "211e2c14e90323b3e38e0a830e3a51168e3db8e2f58e0eecc0ae0650a3bdb773"
+  }
+}
