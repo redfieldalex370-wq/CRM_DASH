@@ -7,9 +7,14 @@ const DEFAULT_STAGES_BY_COMPANY = {
   'dr-woolrich': [
     { stageKey: 'contactos_nuevos', name: 'Contactos nuevos', color: '#6d7cff', mode: 'automatic', order: 1 },
     { stageKey: 'preguntaron_fechas', name: 'Preguntaron por fechas', color: '#37a9ff', mode: 'automatic', order: 2 },
-    { stageKey: 'cita_agendada', name: 'Cita agendada', color: '#20c997', mode: 'automatic', order: 3 },
-    { stageKey: 'asistio_consulta', name: 'Asistió a consulta', color: '#ff9f43', mode: 'manual', order: 4 },
-    { stageKey: 'cirugia_agendada', name: 'Cirugía agendada', color: '#f368e0', mode: 'manual', order: 5 },
+    { stageKey: 'seguimiento_1', name: 'Seguimiento 1', color: '#38bdf8', mode: 'automatic', order: 3 },
+    { stageKey: 'seguimiento_2', name: 'Seguimiento 2', color: '#818cf8', mode: 'automatic', order: 4 },
+    { stageKey: 'seguimiento_3', name: 'Seguimiento 3', color: '#a78bfa', mode: 'automatic', order: 5 },
+    { stageKey: 'cita_agendada', name: 'Cita agendada', color: '#20c997', mode: 'automatic', order: 6 },
+    { stageKey: 'asistio_consulta', name: 'Asistió a consulta', color: '#ff9f43', mode: 'manual', order: 7 },
+    { stageKey: 'no_asistio_cita', name: 'No asistió a cita', color: '#ef4444', mode: 'manual', order: 8 },
+    { stageKey: 'cirugia_agendada', name: 'Cirugía agendada', color: '#f368e0', mode: 'manual', order: 9 },
+    { stageKey: 'cita_cancelada', name: 'Cita cancelada', color: '#fb7185', mode: 'manual', order: 10 },
   ],
   'zenda-cafe': [
     { stageKey: 'contactos_nuevos', name: 'Contactos nuevos', color: '#8b6f47', mode: 'automatic', order: 1 },
@@ -60,6 +65,28 @@ function placeholderName(row) {
 }
 
 const VALID_CLASSIFICATIONS = ['TIENDA', 'COFFEE BREAK', 'MERCADITO', 'CHATBOT', 'LANDING'];
+const WOOLRICH_FOLLOWUP_STAGES = new Set([
+  'contactos_nuevos',
+  'preguntaron_fechas',
+  'seguimiento_1',
+  'seguimiento_2',
+  'seguimiento_3',
+]);
+
+function woolrichStage(row) {
+  const currentStage = row.kanban_stage || 'contactos_nuevos';
+  if (
+    row.company_key !== 'dr-woolrich' ||
+    row.stage_locked ||
+    !WOOLRICH_FOLLOWUP_STAGES.has(currentStage)
+  ) {
+    return currentStage;
+  }
+  if (row.s3_enviado) return 'seguimiento_3';
+  if (row.s2_enviado) return 'seguimiento_2';
+  if (row.s1_enviado) return 'seguimiento_1';
+  return currentStage;
+}
 
 function normalizeClassification(value, tags = []) {
   const direct = String(value || '').trim().toUpperCase();
@@ -80,7 +107,7 @@ export function mapLeadFromDb(row) {
     id: row.id,
     companyId: row.company_key,
     subscriberId: row.subscriber_id,
-    stageId: row.kanban_stage || raw.etapa || 'contactos_nuevos',
+    stageId: woolrichStage(row) || raw.etapa || 'contactos_nuevos',
     name: row.nombre_paciente || raw.nombre_completo || raw.nombre_contacto || placeholderName(row),
     phone: row.whatsapp_phone || raw.telefono || '',
     service: row.service || businessType || businessName || '',
@@ -112,6 +139,10 @@ export function mapLeadFromDb(row) {
     reminderText: String(row.reminder_text || '').trim(),
     reminderAt: row.reminder_at || '',
     reminderCompleted: Boolean(row.reminder_completed),
+    followupLevel: Number(row.followup_level || 0),
+    followup1SentAt: row.s1_enviado || '',
+    followup2SentAt: row.s2_enviado || '',
+    followup3SentAt: row.s3_enviado || '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
