@@ -304,7 +304,7 @@ export default function App() {
     stale: leads.filter((lead) => lead.lastContactAt && Date.now() - new Date(lead.lastContactAt).getTime() > 24 * 60 * 60 * 1000).length,
     readyToPay: leads.filter((lead) => lead.stageId === 'listo_para_pago' || lead.readyToPay).length,
     needsAdvisor: leads.filter((lead) => lead.requiresAdvisor).length,
-    clients: leads.filter((lead) => lead.stageId === 'cliente').length,
+    clients: leads.filter((lead) => ['cliente', 'cliente_concretado'].includes(lead.stageId)).length,
   };
 
   return (

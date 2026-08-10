@@ -26,8 +26,9 @@ values
   ('green-chimp-express', 'objecion_precio', 'Objeción de precio', '#f59e0b', 'automatic', 4),
   ('green-chimp-express', 'listo_para_pago', 'Listo para pagar', '#10b981', 'automatic', 5),
   ('green-chimp-express', 'contactado', 'Contactado por asesor', '#06b6d4', 'manual', 6),
-  ('green-chimp-express', 'cliente', 'Cliente', '#22c55e', 'manual', 7),
-  ('green-chimp-express', 'perdido', 'Perdido', '#ef4444', 'manual', 8)
+  ('green-chimp-express', 'cliente', 'CLIENTE ACTIVO', '#22c55e', 'manual', 7),
+  ('green-chimp-express', 'cliente_concretado', 'CLIENTE CONCRETADO', '#14b8a6', 'manual', 8),
+  ('green-chimp-express', 'perdido', 'Perdido', '#ef4444', 'manual', 9)
 on conflict (company_key, stage_key)
 do update set
   name = excluded.name,

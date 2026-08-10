@@ -41,8 +41,9 @@ const DEFAULT_STAGES_BY_COMPANY = {
     { stageKey: 'objecion_precio', name: 'Objeción de precio', color: '#f59e0b', mode: 'automatic', order: 4 },
     { stageKey: 'listo_para_pago', name: 'Listo para pagar', color: '#10b981', mode: 'automatic', order: 5 },
     { stageKey: 'contactado', name: 'Contactado por asesor', color: '#06b6d4', mode: 'manual', order: 6 },
-    { stageKey: 'cliente', name: 'Cliente', color: '#22c55e', mode: 'manual', order: 7 },
-    { stageKey: 'perdido', name: 'Perdido', color: '#ef4444', mode: 'manual', order: 8 },
+    { stageKey: 'cliente', name: 'CLIENTE ACTIVO', color: '#22c55e', mode: 'manual', order: 7 },
+    { stageKey: 'cliente_concretado', name: 'CLIENTE CONCRETADO', color: '#14b8a6', mode: 'manual', order: 8 },
+    { stageKey: 'perdido', name: 'Perdido', color: '#ef4444', mode: 'manual', order: 9 },
   ],
 };
 
