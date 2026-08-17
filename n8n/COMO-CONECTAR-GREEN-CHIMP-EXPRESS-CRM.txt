@@ -18,6 +18,13 @@ Sintoma que confirma que falta esta sincronizacion:
 En ese caso no fallo WhatsApp ni el bot: falta mandar el mismo lead a
 public.crm_leads con el RPC upsert_crm_lead_from_sheet.
 
+Tambien existe una segunda proteccion desde Supabase:
+supabase/sync-green-chimp-wa-conversations-to-crm.sql
+
+Ese SQL crea un trigger para que cada conversacion nueva de Green Chimp
+Express en public.wa_conversaciones se refleje automaticamente en
+public.crm_leads, aunque n8n solo haya guardado la conversacion.
+
 1. En el flujo principal de n8n, agrega un nodo Code despues de:
    Guardar Estado PostgreSQL
 
