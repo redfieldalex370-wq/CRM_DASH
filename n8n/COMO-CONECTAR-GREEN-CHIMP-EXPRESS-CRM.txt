@@ -1,0 +1,65 @@
+GREEN CHIMP EXPRESS | CONECTAR FLUJO PRINCIPAL + GOOGLE SHEETS AL CRM
+
+Objetivo:
+Que el CRM de la pagina siga recibiendo datos del flujo viejo de Google Sheets
+y tambien del flujo principal nuevo que guarda en public.gc_leads_estado.
+
+IMPORTANTE:
+La pagina del CRM lee public.crm_leads.
+El flujo principal nuevo guarda en public.gc_leads_estado, por eso hay que
+sincronizar tambien hacia public.crm_leads.
+
+1. En el flujo principal de n8n, agrega un nodo Code despues de:
+   Guardar Estado PostgreSQL
+
+2. Ponle este nombre:
+   Preparar CRM Green Chimp Express
+
+3. Copia dentro de ese nodo el codigo de:
+   n8n/green-chimp-express-main-flow-crm-sync.js
+
+4. Despues agrega un nodo HTTP Request:
+   Nombre:
+   Upsert Green Chimp Express CRM
+
+   Method:
+   POST
+
+   URL:
+   https://nocbqbasbqkmezohhppd.supabase.co/rest/v1/rpc/upsert_crm_lead_from_sheet
+
+   Headers:
+   apikey: TU_SERVICE_ROLE_KEY
+   Authorization: Bearer TU_SERVICE_ROLE_KEY
+   Content-Type: application/json
+
+   Body:
+   JSON
+   ={{ $json }}
+
+5. Conecta asi:
+   Guardar Estado PostgreSQL
+   -> Preparar CRM Green Chimp Express
+   -> Upsert Green Chimp Express CRM
+   -> Guardar Estado PostgreSQL1
+
+6. Deja prendido el flujo viejo de Google Sheets si todavia lo necesitas.
+   Ambos pueden convivir porque el RPC hace upsert por:
+   company_key + subscriber_id
+
+7. Si el flujo viejo de Google Sheets trae la etapa CLIENTE CONCRETADO,
+   agrega estas dos entradas en su normalizador de etapas:
+
+   VALID_STAGES:
+   'cliente_concretado'
+
+   aliases:
+   cliente_concretado: 'cliente_concretado',
+   concretado: 'cliente_concretado',
+   cliente_activo: 'cliente'
+
+Notas:
+- Si el lead ya fue movido manualmente en el CRM, el RPC respeta stage_locked.
+- El flujo principal manda crm_sync_source = flujo_principal dentro de raw_payload.
+- El flujo viejo de Google Sheets conserva su raw_payload de Sheets.
+- No pegues service_role en GitHub. Solo va dentro de n8n.
