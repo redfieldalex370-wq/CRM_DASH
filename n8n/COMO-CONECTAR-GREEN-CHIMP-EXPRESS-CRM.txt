@@ -9,6 +9,15 @@ La pagina del CRM lee public.crm_leads.
 El flujo principal nuevo guarda en public.gc_leads_estado, por eso hay que
 sincronizar tambien hacia public.crm_leads.
 
+Sintoma que confirma que falta esta sincronizacion:
+- El contacto aparece en el portal de conversaciones.
+- Los nodos Guardar Estado PostgreSQL, Guardar Estado PostgreSQL1 y Log Saliente1
+  terminan bien.
+- Pero el tablero Green Chimp Express no sube el contador y el lead no aparece.
+
+En ese caso no fallo WhatsApp ni el bot: falta mandar el mismo lead a
+public.crm_leads con el RPC upsert_crm_lead_from_sheet.
+
 1. En el flujo principal de n8n, agrega un nodo Code despues de:
    Guardar Estado PostgreSQL
 
@@ -43,6 +52,10 @@ sincronizar tambien hacia public.crm_leads.
    -> Upsert Green Chimp Express CRM
    -> Guardar Estado PostgreSQL1
 
+   La conexion debe quedar antes de Guardar Estado PostgreSQL1 para que el
+   flujo conserve el orden:
+   estado comercial -> CRM del tablero -> conversacion -> respuesta/logs.
+
 6. Deja prendido el flujo viejo de Google Sheets si todavia lo necesitas.
    Ambos pueden convivir porque el RPC hace upsert por:
    company_key + subscriber_id
@@ -63,3 +76,6 @@ Notas:
 - El flujo principal manda crm_sync_source = flujo_principal dentro de raw_payload.
 - El flujo viejo de Google Sheets conserva su raw_payload de Sheets.
 - No pegues service_role en GitHub. Solo va dentro de n8n.
+- Para sitio web, el adaptador manda classification = LANDING.
+- Para chatbot, el adaptador manda classification = CHATBOT.
+- Si llega etapa "Calificando", se guarda como kanban_stage = calificando.
