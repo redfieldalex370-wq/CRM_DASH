@@ -25,6 +25,14 @@ Ese SQL crea un trigger para que cada conversacion nueva de Green Chimp
 Express en public.wa_conversaciones se refleje automaticamente en
 public.crm_leads, aunque n8n solo haya guardado la conversacion.
 
+Proteccion adicional para Woolrich / Especialidades Dentales:
+supabase/route-crm-leads-by-known-company.sql
+
+Ese SQL carga la lista de subscriber_id conocidos de Woolrich desde
+Woolrich_N8N.xlsx y crea un trigger en public.crm_leads. Si un flujo manda
+uno de esos contactos a otra empresa por error, Supabase lo enruta de nuevo
+a dr-woolrich antes de guardarlo.
+
 1. En el flujo principal de n8n, agrega un nodo Code despues de:
    Guardar Estado PostgreSQL
 
