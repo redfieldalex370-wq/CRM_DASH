@@ -9,6 +9,12 @@ La pagina del CRM lee public.crm_leads.
 El flujo principal nuevo guarda en public.gc_leads_estado, por eso hay que
 sincronizar tambien hacia public.crm_leads.
 
+DIAGNOSTICO CONFIRMADO CON EL FLUJO REAL:
+- gc_leads_estado vive en la base configurada como "Postgres account 3".
+- El CRM publicado usa otro proyecto de Supabase.
+- Guardar Estado PostgreSQL y Guardar Estado PostgreSQL1 no sincronizan el CRM.
+- Por eso Landing y Chatbot existen, pero el tablero muestra cero.
+
 Sintoma que confirma que falta esta sincronizacion:
 - El contacto aparece en el portal de conversaciones.
 - Los nodos Guardar Estado PostgreSQL, Guardar Estado PostgreSQL1 y Log Saliente1
@@ -70,6 +76,35 @@ a dr-woolrich antes de guardarlo.
    La conexion debe quedar antes de Guardar Estado PostgreSQL1 para que el
    flujo conserve el orden:
    estado comercial -> CRM del tablero -> conversacion -> respuesta/logs.
+
+RECUPERAR LOS CONTACTOS QUE YA EXISTEN
+
+1. Crea un flujo manual temporal en n8n.
+
+2. Agrega un nodo PostgreSQL llamado:
+   Leer gc_leads_estado para CRM
+
+   Credencial:
+   Postgres account 3
+
+   Query:
+   n8n/green-chimp-express-backfill-query.sql
+
+3. Agrega un nodo Code llamado:
+   Preparar recuperación CRM Green Chimp
+
+   Modo:
+   Run Once for All Items
+
+   Código:
+   n8n/green-chimp-express-backfill-from-gc.js
+
+4. Agrega un HTTP Request idéntico a "Upsert Green Chimp Express CRM":
+   POST https://nocbqbasbqkmezohhppd.supabase.co/rest/v1/rpc/upsert_crm_lead_from_sheet
+   Body JSON: ={{ $json }}
+
+5. Ejecuta el flujo manual una sola vez. El RPC usa upsert, así que no duplica
+   contactos si alguno ya existe.
 
 6. Deja prendido el flujo viejo de Google Sheets si todavia lo necesitas.
    Ambos pueden convivir porque el RPC hace upsert por:

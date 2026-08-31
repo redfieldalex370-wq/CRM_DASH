@@ -16,8 +16,12 @@ function nodeJson(name) {
 }
 
 const entrada = nodeJson('Extraer Datos1');
-const ruta = nodeJson('Detectar Ruta');
-const normalizado = nodeJson('Normalizar Cliente');
+const ruta = Object.keys(nodeJson('Detectar Ruta1')).length
+  ? nodeJson('Detectar Ruta1')
+  : nodeJson('Detectar Ruta');
+const normalizado = Object.keys(nodeJson('Normalizar Cliente')).length
+  ? nodeJson('Normalizar Cliente')
+  : nodeJson('Normalizar Cliente1');
 const validado = nodeJson('Validador Comercial y CRM1');
 const cierre = Object.keys(nodeJson('Cierre Determinístico1')).length
   ? nodeJson('Cierre Determinístico1')
