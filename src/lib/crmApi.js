@@ -3,6 +3,13 @@ import { restRequest } from './supabase';
 const encode = encodeURIComponent;
 const nowIso = () => new Date().toISOString();
 
+const SOURCE_PHONE_BY_COMPANY = {
+  'dr-woolrich': '1289334717595109',
+  'especialidades-dentales': '620774694457849',
+  'green-chimp-express': '1240006745865858',
+  'zenda-cafe': '1272209879317604',
+};
+
 const DEFAULT_STAGES_BY_COMPANY = {
   'dr-woolrich': [
     { stageKey: 'contactos_nuevos', name: 'Contactos nuevos', color: '#6d7cff', mode: 'automatic', order: 1 },
@@ -218,11 +225,158 @@ export async function loadStages(companyKey) {
 }
 
 export async function loadLeads(companyKey) {
-  const rows = await restRequest(
+  let rows = await restRequest(
     'crm_leads',
     { query: `select=*&company_key=eq.${encode(companyKey)}&order=updated_at.desc` }
   );
+  const changed = await syncCompanySource(companyKey, rows || []);
+  if (changed) {
+    rows = await restRequest(
+      'crm_leads',
+      { query: `select=*&company_key=eq.${encode(companyKey)}&order=updated_at.desc` }
+    );
+  }
   return (rows || []).map(mapLeadFromDb);
+}
+
+function sourceTimestamp(row) {
+  return row.fecha_actualizacion || row.actualizado_en || row.updated_at || row.fecha_creacion || row.creado_en || '';
+}
+
+function isSourceNewer(source, current) {
+  if (!current) return true;
+  const sourceTime = Date.parse(sourceTimestamp(source));
+  const savedTime = Date.parse(current.source_updated_at || current.updated_at || current.created_at || '');
+  return Number.isFinite(sourceTime) && (!Number.isFinite(savedTime) || sourceTime > savedTime + 1000);
+}
+
+function digits(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function normalizedText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function zendaClassification(text, fallback = '') {
+  const value = normalizedText(text);
+  if (/mercadito|producto|catalogo/.test(value)) return 'MERCADITO';
+  if (/coffee break|evento|cotiza/.test(value)) return 'COFFEE BREAK';
+  if (/tienda|cafe|cupon|menu|horario|ubicacion/.test(value)) return 'TIENDA';
+  return normalizeClassification(fallback) || 'TIENDA';
+}
+
+function expressClassification(text, fallback = '') {
+  const value = normalizedText(text);
+  if (/chatbot|chat bot|bot para|automatiz|asistente virtual|inteligencia artificial/.test(value)) return 'CHATBOT';
+  return normalizeClassification(fallback) || 'LANDING';
+}
+
+function conversationStage(companyKey, text, fallback = 'contactos_nuevos') {
+  const value = normalizedText(text);
+  if (companyKey === 'zenda-cafe') {
+    if (/menu|catalogo|pdf|asesor|persona|encargado/.test(value)) return 'pidio_menu_asesor';
+    if (value && !/^(hola|buenas|buen dia|buenas tardes|buenas noches)[!. ]*$/.test(value)) return 'pregunta_adicional';
+  }
+  if (companyKey === 'dr-woolrich') {
+    if (/agend|cita confirm|quedo.*cita/.test(value)) return 'cita_agendada';
+    if (/fecha|horario|disponibilidad|cuando/.test(value)) return 'preguntaron_fechas';
+  }
+  if (companyKey === 'green-chimp-express') {
+    if (/pago|contratar|comenzar|empezar/.test(value)) return 'listo_para_pago';
+    if (/precio|cuanto|cotiza|paquete/.test(value)) return 'cotizado';
+    if (value) return 'calificando';
+  }
+  return fallback || 'contactos_nuevos';
+}
+
+function sourcePayload(companyKey, source, current) {
+  const subscriber = digits(source.subscriber_id || source.wa_id || source.chat_id || source.whatsapp_phone);
+  if (!subscriber) return null;
+  const text = source.ultimo_mensaje_cli || source.ultimo_texto || source.ultimo_mensaje_usuario || '';
+  const isDental = companyKey === 'especialidades-dentales';
+  const classification = companyKey === 'zenda-cafe'
+    ? zendaClassification(text, current?.classification)
+    : companyKey === 'green-chimp-express'
+      ? expressClassification(text, current?.classification)
+      : null;
+  const dentalAliases = {
+    cita_agendada: 'valoracion_agendada',
+    asistio_consulta: 'asistio_valoracion',
+    cirugia_agendada: 'tratamiento_agendado',
+  };
+  const sourceStage = isDental
+    ? (dentalAliases[source.etapa] || source.etapa || 'contactos_nuevos')
+    : conversationStage(companyKey, text, current?.kanban_stage);
+  const keepManualStage = Boolean(current?.stage_locked);
+  const updatedAt = sourceTimestamp(source) || nowIso();
+  const phone = digits(source.whatsapp_phone || source.telefono || source.wa_id || source.chat_id);
+  const name = source.nombre_paciente || source.nombre_contacto || source.nombre || `Contacto ${subscriber.slice(-4)}`;
+
+  return {
+    company_key: companyKey,
+    subscriber_id: Number(subscriber),
+    whatsapp_phone: phone || null,
+    nombre_paciente: name,
+    bot_status: source.status || source.flow_status || null,
+    fecha_cita: source.fecha_cita || null,
+    summary: source.summary || source.resumen_conversacion || null,
+    status_cita: source.status_cita || null,
+    followup_level: Number(source.followup_level || 0),
+    last_activity_timestamp: source.last_activity_timestamp || null,
+    ultimo_mensaje_cliente: text || null,
+    ultimo_mensaje_bot: source.ultimo_mensaje_bot || source.ultima_respuesta_bot || null,
+    kanban_stage: keepManualStage ? current.kanban_stage : sourceStage,
+    stage_origin: keepManualStage ? current.stage_origin : 'n8n',
+    stage_locked: keepManualStage,
+    classification,
+    source: isDental ? 'WhatsApp Dental' : companyKey === 'zenda-cafe' ? 'WhatsApp Zenda' : companyKey === 'dr-woolrich' ? 'WhatsApp Woolrich' : 'WhatsApp Green Chimp',
+    tags: classification ? [classification] : safeArray(current?.tags),
+    source_updated_at: updatedAt,
+    last_activity_at: updatedAt,
+    raw_payload: {
+      ...safeObject(current?.raw_payload),
+      ...source,
+      classification,
+      crm_sync_source: isDental ? 'wa_clientes_estado' : 'wa_conversaciones',
+    },
+  };
+}
+
+async function syncCompanySource(companyKey, currentRows) {
+  const currentBySubscriber = new Map(currentRows.map((row) => [String(row.subscriber_id), row]));
+  let sourceRows = [];
+  if (companyKey === 'especialidades-dentales') {
+    sourceRows = await restRequest('wa_clientes_estado', {
+      query: 'select=*&order=actualizado_en.desc&limit=1000',
+    });
+  } else if (SOURCE_PHONE_BY_COMPANY[companyKey]) {
+    sourceRows = await restRequest('wa_conversaciones', {
+      query: `select=*&phone_number_id=eq.${encode(SOURCE_PHONE_BY_COMPANY[companyKey])}&archivada=eq.false&order=actualizado_en.desc&limit=1000`,
+    });
+  }
+
+  const payloads = (sourceRows || []).flatMap((source) => {
+    const subscriber = digits(source.subscriber_id || source.wa_id || source.chat_id || source.whatsapp_phone);
+    const current = currentBySubscriber.get(subscriber);
+    if (!isSourceNewer(source, current)) return [];
+    const payload = sourcePayload(companyKey, source, current);
+    return payload ? [payload] : [];
+  });
+  if (!payloads.length) return false;
+
+  await restRequest('crm_leads', {
+    method: 'POST',
+    query: 'on_conflict=company_key,subscriber_id',
+    body: payloads,
+    prefer: 'resolution=merge-duplicates,return=minimal',
+  });
+  return true;
 }
 
 export async function createLead(lead) {
