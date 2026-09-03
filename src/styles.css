@@ -66,7 +66,13 @@ code { background: #222630; padding: 2px 6px; border-radius: 5px; }
 .metric-grid span, .metric-grid small { color: var(--muted); }
 .metric-grid strong { font-size: 27px; }
 
-.kanban-board { display: flex; gap: 14px; align-items: flex-start; overflow-x: auto; padding-bottom: 18px; min-height: 560px; }
+.kanban-board { display: flex; gap: 14px; align-items: flex-start; overflow-x: auto; padding-bottom: 28px; min-height: 560px; scrollbar-width: none; }
+.kanban-board::-webkit-scrollbar { display: none; }
+.kanban-scrollbar { position: fixed; left: 14px; right: 14px; bottom: 0; z-index: 25; height: 20px; overflow-x: auto; overflow-y: hidden; background: #f3f4f6; border: 1px solid #c7c9ce; box-shadow: 0 -4px 16px rgba(0,0,0,.28); }
+.kanban-scrollbar > div { height: 1px; }
+.kanban-scrollbar::-webkit-scrollbar { height: 16px; }
+.kanban-scrollbar::-webkit-scrollbar-thumb { background: #909090; border-radius: 10px; border: 3px solid #f3f4f6; }
+.kanban-scrollbar::-webkit-scrollbar-track { background: #f3f4f6; }
 .kanban-column { flex: 0 0 310px; background: #111318; border: 1px solid var(--line); border-radius: 16px; padding: 12px; min-height: 530px; transition: border-color .15s, background .15s; }
 .kanban-column.drag-over { border-color: var(--company-accent); background: color-mix(in srgb, var(--company-accent) 7%, #111318); }
 .column-header { display: flex; justify-content: space-between; align-items: center; padding: 5px 4px; }
