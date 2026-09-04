@@ -111,6 +111,9 @@ export function mapLeadFromDb(row) {
   const classification = normalizeClassification(row.classification || raw.producto_interes, tags);
   const businessName = String(raw.nombre_negocio || '').trim();
   const businessType = String(raw.tipo_negocio || '').trim();
+  const expressInterest = row.company_key === 'green-chimp-express' && classification
+    ? `Interés en ${classification === 'LANDING' ? 'Landing' : 'Chatbot'}`
+    : '';
   return {
     id: row.id,
     companyId: row.company_key,
@@ -118,7 +121,7 @@ export function mapLeadFromDb(row) {
     stageId: woolrichStage(row) || raw.etapa || 'contactos_nuevos',
     name: row.nombre_paciente || raw.nombre_completo || raw.nombre_contacto || placeholderName(row),
     phone: row.whatsapp_phone || raw.telefono || '',
-    service: row.service || businessType || businessName || '',
+    service: row.service || businessName || businessType || expressInterest,
     classification,
     assignedTo: row.assigned_to || '',
     source: row.source || raw.fuente || 'WhatsApp',
@@ -317,12 +320,19 @@ function sourcePayload(companyKey, source, current) {
   const updatedAt = sourceTimestamp(source) || nowIso();
   const phone = digits(source.whatsapp_phone || source.telefono || source.wa_id || source.chat_id);
   const name = source.nombre_paciente || source.nombre_contacto || source.nombre || `Contacto ${subscriber.slice(-4)}`;
+  const currentRaw = safeObject(current?.raw_payload);
+  const expressService = companyKey === 'green-chimp-express'
+    ? current?.service || currentRaw.nombre_negocio || currentRaw.tipo_negocio || (classification
+      ? `Interés en ${classification === 'LANDING' ? 'Landing' : 'Chatbot'}`
+      : null)
+    : null;
 
   return {
     company_key: companyKey,
     subscriber_id: Number(subscriber),
     whatsapp_phone: phone || null,
     nombre_paciente: name,
+    service: expressService,
     bot_status: source.status || source.flow_status || null,
     fecha_cita: source.fecha_cita || null,
     summary: source.summary || source.resumen_conversacion || null,
