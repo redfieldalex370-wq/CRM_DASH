@@ -105,15 +105,73 @@ function normalizeClassification(value, tags = []) {
   return fromTags || '';
 }
 
+function dentalInterest(value) {
+  const text = normalizedText(value);
+  if (/limpieza|airflow|raspad|mancha|sarro/.test(text)) return 'Interés en limpieza dental';
+  if (/implante/.test(text)) return 'Interés en implantes dentales';
+  if (/protesis|dentadura/.test(text)) return 'Interés en prótesis dental';
+  if (/extraer|extraccion|sacar.*muela|sacarme.*muela/.test(text)) return 'Interés en extracción dental';
+  if (/blanqueamiento|blanquear/.test(text)) return 'Interés en blanqueamiento dental';
+  if (/ortodoncia|bracket/.test(text)) return 'Interés en ortodoncia';
+  if (/endodoncia/.test(text)) return 'Interés en endodoncia';
+  if (/dolor|molestia|muela|diente/.test(text)) return 'Interés en valoración por molestia dental';
+  return 'Interés en valoración dental';
+}
+
+function zendaInterest(value, classification, raw = {}, stage = '') {
+  const text = normalizedText(value);
+  if (boolValue(raw.cupon_enviado) || /cupon/.test(text)) return 'Solicitó cupón';
+  if (stage === 'pidio_menu_asesor' || /menu|carta|catalogo|pdf/.test(text)) return 'Solicitó menú / asesor';
+  if (classification === 'COFFEE BREAK') return 'Interés en Coffee Break';
+  if (classification === 'MERCADITO') return 'Interés en Mercadito';
+  return 'Interés en Tienda / Café';
+}
+
+function woolrichInterest(value) {
+  const text = normalizedText(value);
+  if (/hernia|ernia/.test(text)) return 'Consulta por hernia';
+  if (/vesicula|calculo.*biliar/.test(text)) return 'Consulta de vesícula';
+  if (/tomografia/.test(text)) return 'Consulta sobre tomografía';
+  if (/cirugia|operacion|operar/.test(text)) return 'Interés en cirugía';
+  if (/cita|valoracion|consulta/.test(text)) return 'Interés en valoración médica';
+  return 'Interés en consulta quirúrgica';
+}
+
+function companyInterest(companyKey, row, raw, classification) {
+  const evidence = [
+    row.summary,
+    row.ultimo_mensaje_cliente,
+    raw.ultimo_mensaje_cli,
+    raw.ultimo_texto,
+    raw.ultimo_mensaje_usuario,
+    raw.resumen_conversacion,
+    row.ultimo_mensaje_bot,
+    raw.ultima_respuesta_bot,
+  ].filter(Boolean).join(' ');
+  if (companyKey === 'especialidades-dentales') return dentalInterest(evidence);
+  if (companyKey === 'zenda-cafe') return zendaInterest(evidence, classification, raw, row.kanban_stage);
+  if (companyKey === 'dr-woolrich') return woolrichInterest(evidence);
+  if (companyKey === 'green-chimp-express' && classification) {
+    return `Interés en ${classification === 'LANDING' ? 'Landing' : 'Chatbot'}`;
+  }
+  return '';
+}
+
 export function mapLeadFromDb(row) {
   const tags = safeArray(row.tags);
   const raw = safeObject(row.raw_payload);
-  const classification = normalizeClassification(row.classification || raw.producto_interes, tags);
+  let classification = normalizeClassification(row.classification || raw.producto_interes, tags);
+  if (!classification && row.company_key === 'zenda-cafe') {
+    const module = normalizedText(raw.modulo_seleccionado || raw.etiqueta);
+    classification = module.includes('mercadito')
+      ? 'MERCADITO'
+      : module.includes('evento') || module.includes('coffee')
+        ? 'COFFEE BREAK'
+        : 'TIENDA';
+  }
   const businessName = String(raw.nombre_negocio || '').trim();
   const businessType = String(raw.tipo_negocio || '').trim();
-  const expressInterest = row.company_key === 'green-chimp-express' && classification
-    ? `Interés en ${classification === 'LANDING' ? 'Landing' : 'Chatbot'}`
-    : '';
+  const interest = companyInterest(row.company_key, row, raw, classification);
   return {
     id: row.id,
     companyId: row.company_key,
@@ -121,7 +179,7 @@ export function mapLeadFromDb(row) {
     stageId: woolrichStage(row) || raw.etapa || 'contactos_nuevos',
     name: row.nombre_paciente || raw.nombre_completo || raw.nombre_contacto || placeholderName(row),
     phone: row.whatsapp_phone || raw.telefono || '',
-    service: row.service || businessName || businessType || expressInterest,
+    service: row.service || businessName || businessType || interest,
     classification,
     assignedTo: row.assigned_to || '',
     source: row.source || raw.fuente || 'WhatsApp',
@@ -248,6 +306,8 @@ function sourceTimestamp(row) {
 
 function isSourceNewer(source, current) {
   if (!current) return true;
+  if (!current.service) return true;
+  if (current.company_key === 'zenda-cafe' && !current.classification) return true;
   const sourceTime = Date.parse(sourceTimestamp(source));
   const savedTime = Date.parse(current.source_updated_at || current.updated_at || current.created_at || '');
   return Number.isFinite(sourceTime) && (!Number.isFinite(savedTime) || sourceTime > savedTime + 1000);
@@ -321,18 +381,22 @@ function sourcePayload(companyKey, source, current) {
   const phone = digits(source.whatsapp_phone || source.telefono || source.wa_id || source.chat_id);
   const name = source.nombre_paciente || source.nombre_contacto || source.nombre || `Contacto ${subscriber.slice(-4)}`;
   const currentRaw = safeObject(current?.raw_payload);
-  const expressService = companyKey === 'green-chimp-express'
-    ? current?.service || currentRaw.nombre_negocio || currentRaw.tipo_negocio || (classification
-      ? `Interés en ${classification === 'LANDING' ? 'Landing' : 'Chatbot'}`
-      : null)
-    : null;
+  const sourceRaw = { ...currentRaw, ...source };
+  const detectedInterest = companyInterest(companyKey, {
+    summary: source.summary,
+    ultimo_mensaje_cliente: text,
+    ultimo_mensaje_bot: source.ultimo_mensaje_bot || source.ultima_respuesta_bot,
+  }, sourceRaw, classification);
+  const detectedService = companyKey === 'green-chimp-express'
+    ? current?.service || currentRaw.nombre_negocio || currentRaw.tipo_negocio || detectedInterest
+    : detectedInterest;
 
   return {
     company_key: companyKey,
     subscriber_id: Number(subscriber),
     whatsapp_phone: phone || null,
     nombre_paciente: name,
-    service: expressService,
+    service: detectedService || null,
     bot_status: source.status || source.flow_status || null,
     fecha_cita: source.fecha_cita || null,
     summary: source.summary || source.resumen_conversacion || null,
