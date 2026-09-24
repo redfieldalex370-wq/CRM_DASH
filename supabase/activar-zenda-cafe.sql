@@ -13,17 +13,25 @@ alter table public.crm_leads
 create index if not exists crm_leads_company_classification_idx
   on public.crm_leads (company_key, classification);
 
--- 2. Columnas del Kanban de Zenda Café.
+-- 2. Columnas del Kanban de Zenda en Casa.
+delete from public.crm_pipeline_stages
+where company_key = 'zenda-cafe'
+  and stage_key not in (
+    'cliente_nuevo', 'pregunto_menu', 'cotizado',
+    'datos_bancarios_enviados', 'comprobante_recibido',
+    'cliente_activo', 'cliente_inactivo'
+  );
+
 insert into public.crm_pipeline_stages
   (company_key, stage_key, name, color, movement_mode, position)
 values
-  ('zenda-cafe', 'contactos_nuevos', 'Contactos nuevos', '#8b6f47', 'automatic', 1),
-  ('zenda-cafe', 'pregunta_adicional', 'Pregunta algo adicional', '#c8965f', 'automatic', 2),
-  ('zenda-cafe', 'pidio_menu_asesor', 'Pidió menú / pidió hablar con asesor', '#e2b873', 'automatic', 3),
-  ('zenda-cafe', 'contactado', 'Contactado', '#5aa9e6', 'manual', 4),
-  ('zenda-cafe', 'cotizacion_formal_mandada', 'Cotización formal mandada', '#9b7ede', 'manual', 5),
-  ('zenda-cafe', 'acepto_cotizacion', 'Aceptó cotización', '#39b98a', 'manual', 6),
-  ('zenda-cafe', 'cliente', 'Cliente', '#d48b45', 'manual', 7)
+  ('zenda-cafe', 'cliente_nuevo', 'Cliente nuevo', '#8b6f47', 'automatic', 1),
+  ('zenda-cafe', 'pregunto_menu', 'Preguntó por menú', '#c8965f', 'automatic', 2),
+  ('zenda-cafe', 'cotizado', 'Se cotizó', '#e2b873', 'automatic', 3),
+  ('zenda-cafe', 'datos_bancarios_enviados', 'Se mandaron datos bancarios', '#5aa9e6', 'automatic', 4),
+  ('zenda-cafe', 'comprobante_recibido', 'Se recibió comprobante', '#9b7ede', 'automatic', 5),
+  ('zenda-cafe', 'cliente_activo', 'Cliente activo', '#39b98a', 'manual', 6),
+  ('zenda-cafe', 'cliente_inactivo', 'Cliente inactivo', '#ef4444', 'manual', 7)
 on conflict (company_key, stage_key)
 do update set
   name = excluded.name,
@@ -42,8 +50,8 @@ insert into public.crm_company_members (
 select
   id,
   'zenda-cafe',
-  'ZENDA CAFÉ',
-  'Administrador Zenda Café',
+  'ZENDA EN CASA',
+  'Administrador Zenda en Casa',
   'admin_zenda',
   'admin',
   'ZC',
@@ -69,7 +77,7 @@ insert into public.crm_company_members (
 select
   id,
   'zenda-cafe',
-  'ZENDA CAFÉ',
+  'ZENDA EN CASA',
   'Superadministrador Green Chimp',
   'superadmin',
   'superadmin',

@@ -5,7 +5,7 @@ Raíz completa para desarrollo con React + Vite.
 ## Incluye
 
 - Dr. Woolrich
-- Zenda Café
+- Zenda en Casa (embudo automático de pedido y pago)
 - Especialidades Dentales
 - Green Chimp Express con filtros Chatbot / Landing
 - Seguimiento manual desde la ficha del contacto

@@ -24,13 +24,13 @@ const DEFAULT_STAGES_BY_COMPANY = {
     { stageKey: 'cita_cancelada', name: 'Cita cancelada', color: '#fb7185', mode: 'manual', order: 10 },
   ],
   'zenda-cafe': [
-    { stageKey: 'contactos_nuevos', name: 'Contactos nuevos', color: '#8b6f47', mode: 'automatic', order: 1 },
-    { stageKey: 'pregunta_adicional', name: 'Pregunta algo adicional', color: '#c8965f', mode: 'automatic', order: 2 },
-    { stageKey: 'pidio_menu_asesor', name: 'Pidió menú / pidió hablar con asesor', color: '#e2b873', mode: 'automatic', order: 3 },
-    { stageKey: 'contactado', name: 'Contactado', color: '#5aa9e6', mode: 'manual', order: 4 },
-    { stageKey: 'cotizacion_formal_mandada', name: 'Cotización formal mandada', color: '#9b7ede', mode: 'manual', order: 5 },
-    { stageKey: 'acepto_cotizacion', name: 'Aceptó cotización', color: '#39b98a', mode: 'manual', order: 6 },
-    { stageKey: 'cliente', name: 'Cliente', color: '#d48b45', mode: 'manual', order: 7 },
+    { stageKey: 'cliente_nuevo', name: 'Cliente nuevo', color: '#8b6f47', mode: 'automatic', order: 1 },
+    { stageKey: 'pregunto_menu', name: 'Preguntó por menú', color: '#c8965f', mode: 'automatic', order: 2 },
+    { stageKey: 'cotizado', name: 'Se cotizó', color: '#e2b873', mode: 'automatic', order: 3 },
+    { stageKey: 'datos_bancarios_enviados', name: 'Se mandaron datos bancarios', color: '#5aa9e6', mode: 'automatic', order: 4 },
+    { stageKey: 'comprobante_recibido', name: 'Se recibió comprobante', color: '#9b7ede', mode: 'automatic', order: 5 },
+    { stageKey: 'cliente_activo', name: 'Cliente activo', color: '#39b98a', mode: 'manual', order: 6 },
+    { stageKey: 'cliente_inactivo', name: 'Cliente inactivo', color: '#ef4444', mode: 'manual', order: 7 },
   ],
   'especialidades-dentales': [
     { stageKey: 'contactos_nuevos', name: 'Contactos nuevos', color: '#64748b', mode: 'automatic', order: 1 },
@@ -121,7 +121,8 @@ function dentalInterest(value) {
 function zendaInterest(value, classification, raw = {}, stage = '') {
   const text = normalizedText(value);
   if (boolValue(raw.cupon_enviado) || /cupon/.test(text)) return 'Solicitó cupón';
-  if (stage === 'pidio_menu_asesor' || /menu|carta|catalogo|pdf/.test(text)) return 'Solicitó menú / asesor';
+  if (stage === 'pregunto_menu' || /menu|carta|catalogo|pdf/.test(text)) return 'Solicitó menú de Zenda en Casa';
+  if (/desayuno|comida|cena|pedido/.test(text)) return 'Interés en Zenda en Casa';
   if (classification === 'COFFEE BREAK') return 'Interés en Coffee Break';
   if (classification === 'MERCADITO') return 'Interés en Mercadito';
   return 'Interés en Tienda / Café';
@@ -161,7 +162,7 @@ export function mapLeadFromDb(row) {
   const tags = safeArray(row.tags);
   const raw = safeObject(row.raw_payload);
   let classification = normalizeClassification(row.classification || raw.producto_interes, tags);
-  if (!classification && row.company_key === 'zenda-cafe') {
+  if (!classification && row.company_key === 'zenda-cafe' && raw.crm_campaign !== 'zenda_en_casa') {
     const module = normalizedText(raw.modulo_seleccionado || raw.etiqueta);
     classification = module.includes('mercadito')
       ? 'MERCADITO'
@@ -290,14 +291,17 @@ export async function loadLeads(companyKey) {
     'crm_leads',
     { query: `select=*&company_key=eq.${encode(companyKey)}&order=updated_at.desc` }
   );
-  const changed = await syncCompanySource(companyKey, rows || []);
-  if (changed) {
+  const syncResult = await syncCompanySource(companyKey, rows || []);
+  if (syncResult.changed) {
     rows = await restRequest(
       'crm_leads',
       { query: `select=*&company_key=eq.${encode(companyKey)}&order=updated_at.desc` }
     );
   }
-  return (rows || []).map(mapLeadFromDb);
+  const visibleRows = companyKey === 'zenda-cafe' && syncResult.includedSubscribers
+    ? (rows || []).filter((row) => Number(row.subscriber_id) < 0 || syncResult.includedSubscribers.has(String(row.subscriber_id)))
+    : (rows || []);
+  return visibleRows.map(mapLeadFromDb);
 }
 
 function sourceTimestamp(row) {
@@ -307,7 +311,7 @@ function sourceTimestamp(row) {
 function isSourceNewer(source, current) {
   if (!current) return true;
   if (!current.service) return true;
-  if (current.company_key === 'zenda-cafe' && !current.classification) return true;
+  if (current.company_key === 'zenda-cafe' && safeObject(current.raw_payload).crm_campaign !== 'zenda_en_casa') return true;
   const sourceTime = Date.parse(sourceTimestamp(source));
   const savedTime = Date.parse(current.source_updated_at || current.updated_at || current.created_at || '');
   return Number.isFinite(sourceTime) && (!Number.isFinite(savedTime) || sourceTime > savedTime + 1000);
@@ -358,7 +362,65 @@ function conversationStage(companyKey, text, fallback = 'contactos_nuevos') {
   return fallback || 'contactos_nuevos';
 }
 
-function sourcePayload(companyKey, source, current) {
+function zendaEnCasaEvidence(messages) {
+  const ordered = [...messages].sort((a, b) => Date.parse(a.creado_en || '') - Date.parse(b.creado_en || ''));
+  const belongsToCampaign = ordered.some((message) => /zenda en casa/.test(normalizedText(message.texto)));
+  if (!belongsToCampaign) return null;
+
+  const stageRank = {
+    cliente_nuevo: 1,
+    pregunto_menu: 2,
+    cotizado: 3,
+    datos_bancarios_enviados: 4,
+    comprobante_recibido: 5,
+  };
+  let stage = 'cliente_nuevo';
+  const promote = (nextStage) => {
+    if (stageRank[nextStage] > stageRank[stage]) stage = nextStage;
+  };
+  let bankDataAt = 0;
+  for (const message of ordered) {
+    const text = normalizedText(message.texto);
+    const timestamp = Date.parse(message.creado_en || '') || 0;
+    const outgoing = message.direccion === 'out';
+    const incoming = message.direccion === 'in';
+
+    if (/menu|platillos|desayunos.*comidas|comidas.*cenas/.test(text)) promote('pregunto_menu');
+    if (outgoing && (/\$\s?\d|total.*\$|seria un total|con tu descuento|cotiz/.test(text))) promote('cotizado');
+    if (outgoing && (/datos.*transferencia|clabe|cuenta.*titular|datos.*pago/.test(text))) {
+      promote('datos_bancarios_enviados');
+      bankDataAt = timestamp;
+    }
+    if (
+      incoming && bankDataAt && timestamp >= bankDataAt &&
+      (['image', 'document'].includes(message.tipo) || /comprobante|transferencia realizada|ya pague|pago realizado/.test(text))
+    ) {
+      promote('comprobante_recibido');
+    }
+  }
+  return { stage, messages: ordered };
+}
+
+async function loadZendaEnCasaEvidence() {
+  const rows = await restRequest('wa_mensajes', {
+    query: `select=wa_id,direccion,tipo,texto,creado_en&phone_number_id=eq.${encode(SOURCE_PHONE_BY_COMPANY['zenda-cafe'])}&order=creado_en.desc&limit=5000`,
+  });
+  const grouped = new Map();
+  for (const message of rows || []) {
+    const subscriber = digits(message.wa_id);
+    if (!subscriber) continue;
+    if (!grouped.has(subscriber)) grouped.set(subscriber, []);
+    grouped.get(subscriber).push(message);
+  }
+  const evidence = new Map();
+  for (const [subscriber, messages] of grouped) {
+    const result = zendaEnCasaEvidence(messages);
+    if (result) evidence.set(subscriber, result);
+  }
+  return evidence;
+}
+
+function sourcePayload(companyKey, source, current, sourceEvidence = null) {
   const subscriber = digits(source.subscriber_id || source.wa_id || source.chat_id || source.whatsapp_phone);
   if (!subscriber) return null;
   const text = source.ultimo_mensaje_cli || source.ultimo_texto || source.ultimo_mensaje_usuario || '';
@@ -373,10 +435,15 @@ function sourcePayload(companyKey, source, current) {
     asistio_consulta: 'asistio_valoracion',
     cirugia_agendada: 'tratamiento_agendado',
   };
-  const sourceStage = isDental
+  const sourceStage = companyKey === 'zenda-cafe' && sourceEvidence
+    ? sourceEvidence.stage
+    : isDental
     ? (dentalAliases[source.etapa] || source.etapa || 'contactos_nuevos')
     : conversationStage(companyKey, text, current?.kanban_stage);
-  const keepManualStage = Boolean(current?.stage_locked);
+  const keepManualStage = Boolean(
+    current?.stage_locked &&
+    (companyKey !== 'zenda-cafe' || ['cliente_activo', 'cliente_inactivo'].includes(current?.kanban_stage))
+  );
   const updatedAt = sourceTimestamp(source) || nowIso();
   const phone = digits(source.whatsapp_phone || source.telefono || source.wa_id || source.chat_id);
   const name = source.nombre_paciente || source.nombre_contacto || source.nombre || `Contacto ${subscriber.slice(-4)}`;
@@ -408,15 +475,17 @@ function sourcePayload(companyKey, source, current) {
     kanban_stage: keepManualStage ? current.kanban_stage : sourceStage,
     stage_origin: keepManualStage ? current.stage_origin : 'n8n',
     stage_locked: keepManualStage,
-    classification,
+    classification: companyKey === 'zenda-cafe' ? null : classification,
     source: isDental ? 'WhatsApp Dental' : companyKey === 'zenda-cafe' ? 'WhatsApp Zenda' : companyKey === 'dr-woolrich' ? 'WhatsApp Woolrich' : 'WhatsApp Green Chimp',
-    tags: classification ? [classification] : safeArray(current?.tags),
+    tags: companyKey === 'zenda-cafe' ? ['ZENDA EN CASA'] : classification ? [classification] : safeArray(current?.tags),
     source_updated_at: updatedAt,
     last_activity_at: updatedAt,
     raw_payload: {
       ...safeObject(current?.raw_payload),
       ...source,
-      classification,
+      classification: companyKey === 'zenda-cafe' ? null : classification,
+      crm_campaign: companyKey === 'zenda-cafe' ? 'zenda_en_casa' : undefined,
+      crm_detected_stage: companyKey === 'zenda-cafe' ? sourceEvidence?.stage : undefined,
       crm_sync_source: isDental ? 'wa_clientes_estado' : 'wa_conversaciones',
     },
   };
@@ -425,6 +494,7 @@ function sourcePayload(companyKey, source, current) {
 async function syncCompanySource(companyKey, currentRows) {
   const currentBySubscriber = new Map(currentRows.map((row) => [String(row.subscriber_id), row]));
   let sourceRows = [];
+  let zendaEvidence = null;
   if (companyKey === 'especialidades-dentales') {
     sourceRows = await restRequest('wa_clientes_estado', {
       query: 'select=*&order=actualizado_en.desc&limit=1000',
@@ -433,16 +503,21 @@ async function syncCompanySource(companyKey, currentRows) {
     sourceRows = await restRequest('wa_conversaciones', {
       query: `select=*&phone_number_id=eq.${encode(SOURCE_PHONE_BY_COMPANY[companyKey])}&archivada=eq.false&order=actualizado_en.desc&limit=1000`,
     });
+    if (companyKey === 'zenda-cafe') zendaEvidence = await loadZendaEnCasaEvidence();
   }
 
   const payloads = (sourceRows || []).flatMap((source) => {
     const subscriber = digits(source.subscriber_id || source.wa_id || source.chat_id || source.whatsapp_phone);
+    const evidence = zendaEvidence?.get(subscriber) || null;
+    if (companyKey === 'zenda-cafe' && !evidence) return [];
     const current = currentBySubscriber.get(subscriber);
     if (!isSourceNewer(source, current)) return [];
-    const payload = sourcePayload(companyKey, source, current);
+    const payload = sourcePayload(companyKey, source, current, evidence);
     return payload ? [payload] : [];
   });
-  if (!payloads.length) return false;
+  if (!payloads.length) {
+    return { changed: false, includedSubscribers: zendaEvidence ? new Set(zendaEvidence.keys()) : null };
+  }
 
   await restRequest('crm_leads', {
     method: 'POST',
@@ -450,7 +525,7 @@ async function syncCompanySource(companyKey, currentRows) {
     body: payloads,
     prefer: 'resolution=merge-duplicates,return=minimal',
   });
-  return true;
+  return { changed: true, includedSubscribers: zendaEvidence ? new Set(zendaEvidence.keys()) : null };
 }
 
 export async function createLead(lead) {

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import Modal from './Modal';
 
-const ZENDA_CLASSIFICATIONS = ['TIENDA', 'COFFEE BREAK', 'MERCADITO'];
 const EXPRESS_CLASSIFICATIONS = ['CHATBOT', 'LANDING'];
 
 export default function AddLeadModal({ company, onClose, onCreate }) {
@@ -9,7 +8,7 @@ export default function AddLeadModal({ company, onClose, onCreate }) {
   const isZenda = company.id === 'zenda-cafe';
   const isExpress = company.id === 'green-chimp-express';
   const isDental = company.id === 'especialidades-dentales';
-  const classifications = isZenda ? ZENDA_CLASSIFICATIONS : isExpress ? EXPRESS_CLASSIFICATIONS : [];
+  const classifications = isExpress ? EXPRESS_CLASSIFICATIONS : [];
   const [form, setForm] = useState({
     name: '', phone: '', service: '', classification: '', stageId: stages[0]?.id || '', assignedTo: '', source: 'WhatsApp', lastMessage: '',
   });
@@ -23,8 +22,8 @@ export default function AddLeadModal({ company, onClose, onCreate }) {
       setError('Nombre y teléfono son obligatorios.');
       return;
     }
-    if ((isZenda || isExpress) && !form.classification) {
-      setError(isExpress ? 'Selecciona CHATBOT o LANDING.' : 'Selecciona TIENDA, COFFEE BREAK o MERCADITO.');
+    if (isExpress && !form.classification) {
+      setError('Selecciona CHATBOT o LANDING.');
       return;
     }
     onCreate(form);
@@ -38,8 +37,8 @@ export default function AddLeadModal({ company, onClose, onCreate }) {
       <form className="form-grid two" onSubmit={submit}>
         <label>Nombre<input autoFocus value={form.name} onChange={(event) => update('name', event.target.value)} /></label>
         <label>Teléfono<input value={form.phone} onChange={(event) => update('phone', event.target.value)} /></label>
-        {(isZenda || isExpress) && (
-          <label>{isExpress ? 'Producto' : 'Clasificación'}
+        {isExpress && (
+          <label>Producto
             <select value={form.classification} onChange={(event) => update('classification', event.target.value)}>
               <option value="">Seleccionar</option>
               {classifications.map((item) => <option key={item} value={item}>{item}</option>)}

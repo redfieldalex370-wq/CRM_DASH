@@ -1,4 +1,4 @@
-ZENDA CAFÉ | CONEXIÓN CON EL CRM
+ZENDA EN CASA | CONEXIÓN CON EL CRM
 
 OPCIÓN RECOMENDADA DENTRO DEL FLUJO EXISTENTE
 
@@ -30,14 +30,18 @@ JSON Body:
 La service_role se coloca únicamente en n8n. Nunca en la página web.
 
 ETAPAS AUTOMÁTICAS
-- contactos_nuevos
-- pregunta_adicional
-- pidio_menu_asesor
+- cliente_nuevo
+- pregunto_menu
+- cotizado
+- datos_bancarios_enviados
+- comprobante_recibido
 
-CLASIFICACIÓN
-- TIENDA
-- COFFEE BREAK
-- MERCADITO
+ETAPAS MANUALES
+- cliente_activo
+- cliente_inactivo
+
+FILTRO
+- Sólo se envían contactos de Zenda en Casa.
 
 El administrador controla:
 - contactado

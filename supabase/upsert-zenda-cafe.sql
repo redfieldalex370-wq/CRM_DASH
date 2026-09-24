@@ -11,7 +11,7 @@ create or replace function public.upsert_zenda_crm_lead(
   p_ultimo_mensaje_cliente text default null,
   p_classification text default null,
   p_service text default null,
-  p_kanban_stage text default 'contactos_nuevos',
+  p_kanban_stage text default 'cliente_nuevo',
   p_source text default 'WhatsApp',
   p_last_activity_at timestamptz default now(),
   p_raw_payload jsonb default '{}'::jsonb
@@ -26,19 +26,15 @@ declare
   v_classification text;
   v_stage text;
 begin
-  v_classification := case upper(trim(coalesce(p_classification, '')))
-    when 'TIENDA' then 'TIENDA'
-    when 'COFFEE BREAK' then 'COFFEE BREAK'
-    when 'EVENTOS' then 'COFFEE BREAK'
-    when 'MERCADITO' then 'MERCADITO'
-    else null
-  end;
+  v_classification := null;
 
   v_stage := case lower(trim(coalesce(p_kanban_stage, '')))
-    when 'contactos_nuevos' then 'contactos_nuevos'
-    when 'pregunta_adicional' then 'pregunta_adicional'
-    when 'pidio_menu_asesor' then 'pidio_menu_asesor'
-    else 'contactos_nuevos'
+    when 'cliente_nuevo' then 'cliente_nuevo'
+    when 'pregunto_menu' then 'pregunto_menu'
+    when 'cotizado' then 'cotizado'
+    when 'datos_bancarios_enviados' then 'datos_bancarios_enviados'
+    when 'comprobante_recibido' then 'comprobante_recibido'
+    else 'cliente_nuevo'
   end;
 
   insert into public.crm_leads as existing (
@@ -93,16 +89,20 @@ begin
       -- Las etapas administrativas nunca se cambian desde n8n.
       when existing.stage_locked = true then existing.kanban_stage
       when existing.kanban_stage in (
-        'contactado',
-        'cotizacion_formal_mandada',
-        'acepto_cotizacion',
-        'cliente'
+        'cliente_activo',
+        'cliente_inactivo'
       ) then existing.kanban_stage
 
       -- Evitar regresiones entre las etapas automáticas.
-      when existing.kanban_stage = 'pidio_menu_asesor' then existing.kanban_stage
-      when existing.kanban_stage = 'pregunta_adicional'
-           and excluded.kanban_stage = 'contactos_nuevos'
+      when existing.kanban_stage = 'comprobante_recibido' then existing.kanban_stage
+      when existing.kanban_stage = 'datos_bancarios_enviados'
+           and excluded.kanban_stage in ('cliente_nuevo', 'pregunto_menu', 'cotizado')
+        then existing.kanban_stage
+      when existing.kanban_stage = 'cotizado'
+           and excluded.kanban_stage in ('cliente_nuevo', 'pregunto_menu')
+        then existing.kanban_stage
+      when existing.kanban_stage = 'pregunto_menu'
+           and excluded.kanban_stage = 'cliente_nuevo'
         then existing.kanban_stage
       else excluded.kanban_stage
     end,
@@ -110,10 +110,8 @@ begin
     stage_origin = case
       when existing.stage_locked = true then existing.stage_origin
       when existing.kanban_stage in (
-        'contactado',
-        'cotizacion_formal_mandada',
-        'acepto_cotizacion',
-        'cliente'
+        'cliente_activo',
+        'cliente_inactivo'
       ) then existing.stage_origin
       else 'n8n'
     end,

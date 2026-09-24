@@ -1,4 +1,4 @@
-// ZENDA CAFÉ | PREPARAR LEAD PARA CRM
+// ZENDA EN CASA | PREPARAR LEAD PARA CRM
 // Coloca este nodo después de "Validar Alerta Asesor" o del
 // último parser que ya reúna la respuesta y los datos del contacto.
 
@@ -89,7 +89,7 @@ const clientMessage = first(
 );
 
 // ------------------------------------------------------
-// CLASIFICACIÓN: TIENDA / COFFEE BREAK / MERCADITO
+// FILTRO: SOLO ZENDA EN CASA
 // ------------------------------------------------------
 const moduleValue = normalize(first(
   data.modulo_seleccionado,
@@ -98,60 +98,32 @@ const moduleValue = normalize(first(
   data.ruta
 ));
 
-let classification = '';
-
-if (moduleValue.includes('MERCADITO')) {
-  classification = 'MERCADITO';
-} else if (
-  moduleValue.includes('EVENTOS') ||
-  moduleValue.includes('COFFEE BREAK') ||
-  moduleValue.includes('COFFEE_BREAK')
-) {
-  classification = 'COFFEE BREAK';
-} else if (moduleValue.includes('TIENDA')) {
-  classification = 'TIENDA';
-}
-
-// Respaldo por palabras del mensaje cuando no llegó módulo.
 const messageNormalized = normalize(clientMessage);
-if (!classification) {
-  if (/MERCADITO|CAFE EN GRANO|SALSA|FRIJOLES/.test(messageNormalized)) {
-    classification = 'MERCADITO';
-  } else if (/COFFEE BREAK|EVENTO|BODA|FIESTA|COTIZACION|COTIZAR|BARRA DE CAFE/.test(messageNormalized)) {
-    classification = 'COFFEE BREAK';
-  } else if (/MENU|CARTA|PEDIDO|BEBIDA|COMIDA|CUPON|UBER EATS|DIDI|RAPPI/.test(messageNormalized)) {
-    classification = 'TIENDA';
-  }
+const isZendaEnCasa = moduleValue.includes('ZENDA EN CASA') || messageNormalized.includes('ZENDA EN CASA');
+if (!isZendaEnCasa) {
+  return [];
 }
 
 // ------------------------------------------------------
 // ETAPA AUTOMÁTICA
 // ------------------------------------------------------
 const flowStatus = normalize(data.flow_status);
-const asksHuman =
-  bool(data.requiere_asesor) ||
-  flowStatus === 'TRANSFERIR_HUMANO';
-
 const asksMenu =
   bool(data.enviar_menu_pdf) ||
   bool(data.enviar_menu) ||
   bool(data.enviar_menu_imagen) ||
   bool(data.menu_zenda) ||
   flowStatus === 'OFRECER_MENU' ||
-  /\bMENU\b|\bCARTA\b|CATALOGO|HABLAR CON|ASESOR|PERSONA|ENCARGADO|EMPLEADO/.test(messageNormalized);
+  /\bMENU\b|\bCARTA\b|PLATILLOS/.test(messageNormalized);
+const wasQuoted = bool(data.cotizacion_enviada) || /COTIZ|TOTAL|PRECIO/.test(flowStatus);
+const bankDataSent = bool(data.datos_bancarios_enviados) || /DATOS.*BANC|TRANSFERENCIA|CLABE/.test(flowStatus);
+const proofReceived = bool(data.comprobante_recibido) || /COMPROBANTE.*RECIB|PAGO.*RECIB/.test(flowStatus);
 
-const existsBefore =
-  data.existe === true ||
-  bool(data.existe) ||
-  Boolean(text(data.etapa_actual || data.kanban_stage));
-
-let kanbanStage = 'contactos_nuevos';
-
-if (asksHuman || asksMenu) {
-  kanbanStage = 'pidio_menu_asesor';
-} else if (existsBefore) {
-  kanbanStage = 'pregunta_adicional';
-}
+let kanbanStage = 'cliente_nuevo';
+if (asksMenu) kanbanStage = 'pregunto_menu';
+if (wasQuoted) kanbanStage = 'cotizado';
+if (bankDataSent) kanbanStage = 'datos_bancarios_enviados';
+if (proofReceived) kanbanStage = 'comprobante_recibido';
 
 const service = first(
   data.intencion,
@@ -168,8 +140,8 @@ return [{
     p_whatsapp_phone: phone || null,
     p_nombre_paciente: name,
     p_ultimo_mensaje_cliente: clientMessage || null,
-    p_classification: classification || null,
-    p_service: service || null,
+    p_classification: null,
+    p_service: service || 'Zenda en Casa',
     p_kanban_stage: kanbanStage,
     p_source: 'WhatsApp',
     p_last_activity_at: new Date().toISOString(),

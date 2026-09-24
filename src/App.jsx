@@ -20,7 +20,7 @@ const REFRESH_SECONDS = Math.max(10, Number(import.meta.env.VITE_REFRESH_SECONDS
 const nowIso = () => new Date().toISOString();
 
 function companyTitle(companyId) {
-  if (companyId === 'zenda-cafe') return 'Leads de Zenda Café';
+  if (companyId === 'zenda-cafe') return 'Zenda en Casa';
   if (companyId === 'dr-woolrich') return 'Seguimiento de pacientes';
   if (companyId === 'especialidades-dentales') return 'Seguimiento de valoraciones dentales';
   if (companyId === 'green-chimp-express') return 'Green Chimp Express · Chatbot + Landing';
@@ -34,7 +34,7 @@ function workspaceEyebrow(companyId) {
 }
 
 function searchPlaceholder(companyId) {
-  if (companyId === 'zenda-cafe') return 'Buscar contacto, teléfono o clasificación';
+  if (companyId === 'zenda-cafe') return 'Buscar cliente, teléfono o pedido';
   if (companyId === 'especialidades-dentales') return 'Buscar paciente, teléfono o valoración';
   if (companyId === 'green-chimp-express') return 'Buscar contacto, negocio, teléfono o producto';
   return 'Buscar paciente, teléfono o servicio';

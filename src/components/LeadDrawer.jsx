@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 
-const ZENDA_CLASSIFICATIONS = ['TIENDA', 'COFFEE BREAK', 'MERCADITO'];
 const EXPRESS_CLASSIFICATIONS = ['CHATBOT', 'LANDING'];
 
 function localDateTimeValue(value) {
@@ -30,7 +29,7 @@ export default function LeadDrawer({ lead, company, currentUser, onClose, onSave
   const isZenda = company.id === 'zenda-cafe';
   const isDental = company.id === 'especialidades-dentales';
   const isExpress = company.id === 'green-chimp-express';
-  const classificationOptions = isZenda ? ZENDA_CLASSIFICATIONS : isExpress ? EXPRESS_CLASSIFICATIONS : [];
+  const classificationOptions = isExpress ? EXPRESS_CLASSIFICATIONS : [];
   const reminderDate = draft.reminderAt ? new Date(draft.reminderAt) : null;
   const reminderIsValid = reminderDate && !Number.isNaN(reminderDate.getTime());
   const reminderIsOverdue = reminderIsValid && !draft.reminderCompleted && reminderDate.getTime() <= Date.now();
@@ -98,8 +97,8 @@ export default function LeadDrawer({ lead, company, currentUser, onClose, onSave
             <label>Nombre<input value={draft.name} onChange={(event) => update('name', event.target.value)} /></label>
             <label>Teléfono<input value={draft.phone} onChange={(event) => update('phone', event.target.value)} /></label>
 
-            {(isZenda || isExpress) && (
-              <label>{isExpress ? 'Producto' : 'Clasificación'}
+            {isExpress && (
+              <label>Producto
                 <select value={draft.classification || ''} onChange={(event) => update('classification', event.target.value)}>
                   <option value="">Sin clasificación</option>
                   {classificationOptions.map((item) => <option key={item} value={item}>{item}</option>)}
