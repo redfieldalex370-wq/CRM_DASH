@@ -81,6 +81,28 @@ function subscriberNumber(value) {
 function productFrom(value) {
   const normalized = normalize(value);
   if (
+    normalized.includes('reclutamiento') ||
+    normalized.includes('seleccion de personal') ||
+    normalized.includes('vacantes')
+  ) {
+    return 'Reclutamiento automatizado';
+  }
+  if (
+    normalized.includes('sistema pacientes') ||
+    normalized.includes('sistema de pacientes') ||
+    normalized.includes('expediente clinico')
+  ) {
+    return 'Sistema pacientes';
+  }
+  if (
+    normalized.includes('pantallas publicitarias') ||
+    normalized.includes('pantalla publicitaria') ||
+    normalized.includes('menu digital') ||
+    normalized.includes('digital signage')
+  ) {
+    return 'Pantallas publicitarias';
+  }
+  if (
     normalized.includes('chatbot') ||
     normalized.includes('chat bot') ||
     normalized === 'bot'
@@ -95,7 +117,8 @@ function productFrom(value) {
   ) {
     return 'Landing';
   }
-  return '';
+  if (normalized.includes('otro')) return 'Otro';
+  return text(value) ? 'Otro' : '';
 }
 
 const VALID_STAGES = new Set([

@@ -46,9 +46,12 @@ function stage(value, state, flowStatus) {
 
 function classification(value) {
   const product = normalize(value);
+  if (product.includes('reclutamiento') || product.includes('seleccion de personal') || product.includes('vacantes')) return 'RECLUTAMIENTO AUTOMATIZADO';
+  if (product.includes('sistema pacientes') || product.includes('sistema de pacientes') || product.includes('expediente clinico')) return 'SISTEMA PACIENTES';
+  if (product.includes('pantallas publicitarias') || product.includes('pantalla publicitaria') || product.includes('menu digital') || product.includes('digital signage')) return 'PANTALLAS PUBLICITARIAS';
   if (product.includes('chatbot') || product.includes('chat bot') || product === 'bot') return 'CHATBOT';
   if (product.includes('landing') || product.includes('sitio') || product.includes('pagina') || product.includes('web')) return 'LANDING';
-  return '';
+  return product ? 'OTRO' : '';
 }
 
 const output = [];
@@ -80,7 +83,7 @@ for (const item of $input.all()) {
       p_raw_payload: {
         ...lead,
         classification: product,
-        producto_interes: product === 'LANDING' ? 'Landing' : product === 'CHATBOT' ? 'Chatbot' : text(lead.producto_interes),
+        producto_interes: product || text(lead.producto_interes),
         etapa: currentStage,
         crm_sync_source: 'gc_leads_estado_backfill',
         nombre_completo: name,

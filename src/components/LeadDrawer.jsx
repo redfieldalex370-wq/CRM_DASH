@@ -1,6 +1,13 @@
 import { useMemo, useState } from 'react';
 
-const EXPRESS_CLASSIFICATIONS = ['CHATBOT', 'LANDING'];
+const EXPRESS_CLASSIFICATIONS = [
+  'CHATBOT',
+  'LANDING',
+  'RECLUTAMIENTO AUTOMATIZADO',
+  'SISTEMA PACIENTES',
+  'PANTALLAS PUBLICITARIAS',
+  'OTRO',
+];
 
 function localDateTimeValue(value) {
   if (!value) return '';

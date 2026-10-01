@@ -7,7 +7,7 @@ Raíz completa para desarrollo con React + Vite.
 - Dr. Woolrich
 - Zenda en Casa (embudo automático de pedido y pago)
 - Especialidades Dentales
-- Green Chimp Express con filtros Chatbot / Landing
+- Green Chimp Express con filtros para todos sus productos
 - Seguimiento manual desde la ficha del contacto
 - Botón visible **📅 Programar seguimiento**
 - Integración Supabase

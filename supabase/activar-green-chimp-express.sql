@@ -1,5 +1,5 @@
 -- =========================================================
--- GREEN CHIMP CRM | GREEN CHIMP EXPRESS · CHATBOT + LANDING
+-- GREEN CHIMP CRM | GREEN CHIMP EXPRESS · PRODUCTOS Y AUTOMATIZACIÓN
 -- Ejecutar en Supabase > SQL Editor.
 -- Idempotente: puede ejecutarse varias veces.
 -- Esta versión localiza al superadmin por sus memberships existentes,
@@ -47,7 +47,7 @@ insert into public.crm_company_members (
 select
   id,
   'green-chimp-express',
-  'Green Chimp Express · Chatbot + Landing',
+  'Green Chimp Express · Productos y automatización',
   'Administrador Green Chimp Express',
   'admin_express',
   'admin',
@@ -101,7 +101,7 @@ begin
   ) values (
     v_superadmin_id,
     'green-chimp-express',
-    'Green Chimp Express · Chatbot + Landing',
+    'Green Chimp Express · Productos y automatización',
     'Superadministrador Green Chimp',
     'superadmin',
     'superadmin',

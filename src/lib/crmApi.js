@@ -72,7 +72,17 @@ function placeholderName(row) {
   return suffix ? `Contacto ${suffix}` : 'Contacto sin nombre';
 }
 
-const VALID_CLASSIFICATIONS = ['TIENDA', 'COFFEE BREAK', 'MERCADITO', 'CHATBOT', 'LANDING'];
+const VALID_CLASSIFICATIONS = [
+  'TIENDA',
+  'COFFEE BREAK',
+  'MERCADITO',
+  'CHATBOT',
+  'LANDING',
+  'RECLUTAMIENTO AUTOMATIZADO',
+  'SISTEMA PACIENTES',
+  'PANTALLAS PUBLICITARIAS',
+  'OTRO',
+];
 const WOOLRICH_FOLLOWUP_STAGES = new Set([
   'contactos_nuevos',
   'preguntaron_fechas',
@@ -153,7 +163,15 @@ function companyInterest(companyKey, row, raw, classification) {
   if (companyKey === 'zenda-cafe') return zendaInterest(evidence, classification, raw, row.kanban_stage);
   if (companyKey === 'dr-woolrich') return woolrichInterest(evidence);
   if (companyKey === 'green-chimp-express' && classification) {
-    return `Interés en ${classification === 'LANDING' ? 'Landing' : 'Chatbot'}`;
+    const productNames = {
+      CHATBOT: 'Chatbot',
+      LANDING: 'Landing',
+      'RECLUTAMIENTO AUTOMATIZADO': 'Reclutamiento automatizado',
+      'SISTEMA PACIENTES': 'Sistema pacientes',
+      'PANTALLAS PUBLICITARIAS': 'Pantallas publicitarias',
+      OTRO: 'Otro producto',
+    };
+    return `Interés en ${productNames[classification] || classification}`;
   }
   return '';
 }
@@ -340,7 +358,17 @@ function zendaClassification(text, fallback = '') {
 
 function expressClassification(text, fallback = '') {
   const value = normalizedText(text);
+  if (/reclutamiento|reclutar|seleccion de personal|contratacion de personal|vacantes/.test(value)) {
+    return 'RECLUTAMIENTO AUTOMATIZADO';
+  }
+  if (/sistema.*paciente|pacientes.*sistema|expediente.*clinico|agenda.*paciente|clinica|consultorio/.test(value)) {
+    return 'SISTEMA PACIENTES';
+  }
+  if (/pantalla.*publicitaria|pantallas.*publicitarias|publicidad.*pantalla|menu digital|senalizacion digital|digital signage/.test(value)) {
+    return 'PANTALLAS PUBLICITARIAS';
+  }
   if (/chatbot|chat bot|bot para|automatiz|asistente virtual|inteligencia artificial/.test(value)) return 'CHATBOT';
+  if (/landing|pagina web|sitio web|pagina de aterrizaje/.test(value)) return 'LANDING';
   return normalizeClassification(fallback) || 'LANDING';
 }
 

@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import Modal from './Modal';
 
-const EXPRESS_CLASSIFICATIONS = ['CHATBOT', 'LANDING'];
+const EXPRESS_CLASSIFICATIONS = [
+  'CHATBOT',
+  'LANDING',
+  'RECLUTAMIENTO AUTOMATIZADO',
+  'SISTEMA PACIENTES',
+  'PANTALLAS PUBLICITARIAS',
+  'OTRO',
+];
 
 export default function AddLeadModal({ company, onClose, onCreate }) {
   const stages = [...company.stages].sort((a, b) => a.order - b.order);
@@ -23,7 +30,7 @@ export default function AddLeadModal({ company, onClose, onCreate }) {
       return;
     }
     if (isExpress && !form.classification) {
-      setError('Selecciona CHATBOT o LANDING.');
+      setError('Selecciona un producto de Green Chimp.');
       return;
     }
     onCreate(form);

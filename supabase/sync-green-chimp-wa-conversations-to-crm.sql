@@ -31,9 +31,17 @@ begin
   v_text_norm := translate(lower(v_text), 'áéíóúüñ', 'aeiouun');
 
   v_classification := case
+    when v_text_norm ~ 'reclutamiento|reclutar|seleccion de personal|contratacion de personal|vacantes'
+      then 'RECLUTAMIENTO AUTOMATIZADO'
+    when v_text_norm ~ 'sistema (de )?pacientes|expediente clinico|agenda de pacientes|clinica|consultorio'
+      then 'SISTEMA PACIENTES'
+    when v_text_norm ~ 'pantallas? publicitarias?|publicidad en pantallas?|menu digital|senalizacion digital|digital signage'
+      then 'PANTALLAS PUBLICITARIAS'
     when v_text_norm ~ 'chat[ ]?bot|chimpbot|bot con inteligencia|whatsapp responde|responde automaticamente'
       then 'CHATBOT'
-    else 'LANDING'
+    when v_text_norm ~ 'landing|pagina web|sitio web|pagina de aterrizaje'
+      then 'LANDING'
+    else 'OTRO'
   end;
 
   v_stage := case
@@ -70,7 +78,14 @@ begin
     v_subscriber_id,
     new.wa_id,
     coalesce(nullif(new.nombre, ''), 'Contacto ' || right(new.wa_id, 4)),
-    case when v_classification = 'CHATBOT' then 'Chatbot Express' else 'Landing Express' end,
+    case v_classification
+      when 'CHATBOT' then 'Chatbot Express'
+      when 'LANDING' then 'Landing Express'
+      when 'RECLUTAMIENTO AUTOMATIZADO' then 'Reclutamiento automatizado'
+      when 'SISTEMA PACIENTES' then 'Sistema pacientes'
+      when 'PANTALLAS PUBLICITARIAS' then 'Pantallas publicitarias'
+      else 'Otro producto'
+    end,
     v_classification,
     case when new.entrada_ctwa is null then 'WhatsApp' else 'Meta Ads' end,
     nullif(v_text, ''),

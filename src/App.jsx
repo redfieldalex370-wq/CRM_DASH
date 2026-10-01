@@ -23,7 +23,7 @@ function companyTitle(companyId) {
   if (companyId === 'zenda-cafe') return 'Zenda en Casa';
   if (companyId === 'dr-woolrich') return 'Seguimiento de pacientes';
   if (companyId === 'especialidades-dentales') return 'Seguimiento de valoraciones dentales';
-  if (companyId === 'green-chimp-express') return 'Green Chimp Express · Chatbot + Landing';
+  if (companyId === 'green-chimp-express') return 'Green Chimp Express · Productos y automatización';
   return 'Seguimiento de leads';
 }
 
@@ -334,9 +334,13 @@ export default function App() {
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={searchPlaceholder(company.id)} />
             {company.id === 'green-chimp-express' && (
               <select value={productFilter} onChange={(event) => setProductFilter(event.target.value)}>
-                <option value="all">Todos: Chatbot + Landing</option>
+                <option value="all">Todos los productos</option>
                 <option value="CHATBOT">Chatbot Express</option>
                 <option value="LANDING">Landing Express</option>
+                <option value="RECLUTAMIENTO AUTOMATIZADO">Reclutamiento automatizado</option>
+                <option value="SISTEMA PACIENTES">Sistema pacientes</option>
+                <option value="PANTALLAS PUBLICITARIAS">Pantallas publicitarias</option>
+                <option value="OTRO">Otro</option>
               </select>
             )}
             <select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)}>
@@ -350,7 +354,7 @@ export default function App() {
 
         {company.id === 'green-chimp-express' ? (
           <section className="metric-grid">
-            <article><span>Leads totales</span><strong>{metrics.total}</strong><small>Chatbot + Landing</small></article>
+            <article><span>Leads totales</span><strong>{metrics.total}</strong><small>Todos los productos</small></article>
             <article><span>Listos para pagar</span><strong>{metrics.readyToPay}</strong><small>Oportunidades calientes</small></article>
             <article><span>Requieren asesor</span><strong>{metrics.needsAdvisor}</strong><small>Atención humana pendiente</small></article>
             <article><span>Clientes</span><strong>{metrics.clients}</strong><small>Ventas confirmadas</small></article>
