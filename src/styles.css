@@ -47,6 +47,7 @@ code { background: #222630; padding: 2px 6px; border-radius: 5px; }
 .brand-block, .header-actions { display: flex; align-items: center; gap: 12px; }
 .company-avatar { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; background: var(--accent); color: white; font-weight: 900; box-shadow: 0 8px 25px color-mix(in srgb, var(--accent) 35%, transparent); }
 .company-picker { padding: 0 28px 0 0; border: 0; background: transparent; font-size: 18px; font-weight: 800; box-shadow: none; }
+.company-picker option { color: #000; background: #fff; }
 .profile-menu { position: relative; }
 .profile-menu summary { list-style: none; }
 .profile-menu summary::-webkit-details-marker { display: none; }
