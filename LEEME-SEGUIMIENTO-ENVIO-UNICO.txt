@@ -20,4 +20,6 @@ Después importa en n8n:
   n8n/seguimientos-correo-envio-unico.json
 
 Configura la Service Role Key solo dentro de n8n y selecciona Gmail.
-El mismo lead + la misma fecha + el mismo correo solo se envían una vez.
+Cada seguimiento envía dos alertas: 12 horas antes y en la fecha exacta.
+Ambas se mandan a greenchimp.mx@gmail.com y deikrossredfield370@gmail.com.
+El mismo lead + fecha + destinatarios + tipo de alerta solo se envía una vez.

@@ -2,15 +2,17 @@
 -- Ejecutar una sola vez en Supabase > SQL Editor.
 --
 -- Garantía:
--- Un mismo lead + una misma fecha reminder_at + un mismo correo destino
--- solo puede reservarse una vez. Aunque n8n vuelva a correr, no enviará
--- nuevamente ese mismo seguimiento.
+-- Cada seguimiento genera dos alertas: 12 horas antes y en la fecha exacta.
+-- Un mismo lead + fecha + destinatarios + tipo de alerta solo puede enviarse
+-- una vez, aunque n8n vuelva a ejecutar el flujo.
 
 create table if not exists public.crm_reminder_deliveries (
   id uuid primary key default gen_random_uuid(),
   lead_id uuid not null references public.crm_leads(id) on delete cascade,
   reminder_at timestamptz not null,
   email_to text not null,
+  alert_kind text not null default 'exact'
+    check (alert_kind in ('twelve_hours', 'exact')),
   status text not null default 'claimed'
     check (status in ('claimed', 'sent', 'failed')),
   claimed_at timestamptz not null default now(),
@@ -20,8 +22,18 @@ create table if not exists public.crm_reminder_deliveries (
   created_at timestamptz not null default now(),
 
   constraint crm_reminder_deliveries_unique_followup
-    unique (lead_id, reminder_at, email_to)
+    unique (lead_id, reminder_at, email_to, alert_kind)
 );
+
+alter table public.crm_reminder_deliveries
+  add column if not exists alert_kind text not null default 'exact';
+
+alter table public.crm_reminder_deliveries
+  drop constraint if exists crm_reminder_deliveries_unique_followup;
+
+alter table public.crm_reminder_deliveries
+  add constraint crm_reminder_deliveries_unique_followup
+  unique (lead_id, reminder_at, email_to, alert_kind);
 
 create index if not exists crm_reminder_deliveries_status_idx
   on public.crm_reminder_deliveries (status, claimed_at);
@@ -43,7 +55,7 @@ alter table public.crm_leads
 -- ============================================================
 
 create or replace function public.claim_due_crm_reminders(
-  p_email_to text default 'redfieldalex370@gmail.com',
+  p_email_to text default 'greenchimp.mx@gmail.com, deikrossredfield370@gmail.com',
   p_limit integer default 100
 )
 returns setof jsonb
@@ -51,7 +63,7 @@ language sql
 security definer
 set search_path = public
 as $$
-  with due as (
+  with pending as (
     select
       l.id,
       l.company_key,
@@ -65,12 +77,27 @@ as $$
       l.reminder_text,
       l.reminder_at,
       l.reminder_completed,
-      l.raw_payload
+      l.raw_payload,
+      alert.alert_kind
     from public.crm_leads l
+    cross join lateral (
+      values
+        ('twelve_hours'::text, l.reminder_at - interval '12 hours'),
+        ('exact'::text, l.reminder_at)
+    ) as alert(alert_kind, alert_at)
     where l.reminder_at is not null
       and coalesce(l.reminder_completed, false) = false
-      and l.reminder_at <= now()
-    order by l.reminder_at asc
+      and alert.alert_at <= now()
+      and (alert.alert_kind = 'exact' or l.reminder_at > now())
+      and not exists (
+        select 1
+        from public.crm_reminder_deliveries existing_delivery
+        where existing_delivery.lead_id = l.id
+          and existing_delivery.reminder_at = l.reminder_at
+          and existing_delivery.email_to = p_email_to
+          and existing_delivery.alert_kind = alert.alert_kind
+      )
+    order by alert.alert_at asc
     limit greatest(1, least(coalesce(p_limit, 100), 500))
   ),
   claimed as (
@@ -78,21 +105,24 @@ as $$
       lead_id,
       reminder_at,
       email_to,
+      alert_kind,
       status
     )
     select
       d.id,
       d.reminder_at,
       p_email_to,
+      d.alert_kind,
       'claimed'
-    from due d
-    on conflict (lead_id, reminder_at, email_to)
+    from pending d
+    on conflict (lead_id, reminder_at, email_to, alert_kind)
       do nothing
     returning
       id as delivery_id,
       lead_id,
       reminder_at,
-      email_to
+      email_to,
+      alert_kind
   )
   select jsonb_build_object(
     'delivery_id', c.delivery_id,
@@ -110,12 +140,14 @@ as $$
     'reminder_at', d.reminder_at,
     'reminder_completed', d.reminder_completed,
     'raw_payload', d.raw_payload,
-    'email_to', c.email_to
+    'email_to', c.email_to,
+    'alert_kind', c.alert_kind
   )
   from claimed c
-  join due d
+  join pending d
     on d.id = c.lead_id
-   and d.reminder_at = c.reminder_at;
+   and d.reminder_at = c.reminder_at
+   and d.alert_kind = c.alert_kind;
 $$;
 
 -- ============================================================
@@ -134,6 +166,7 @@ as $$
 declare
   v_lead_id uuid;
   v_reminder_at timestamptz;
+  v_alert_kind text;
 begin
   update public.crm_reminder_deliveries
   set
@@ -146,8 +179,8 @@ begin
     error_message = null
   where id = p_delivery_id
     and status = 'claimed'
-  returning lead_id, reminder_at
-  into v_lead_id, v_reminder_at;
+  returning lead_id, reminder_at, alert_kind
+  into v_lead_id, v_reminder_at, v_alert_kind;
 
   if not found then
     return false;
@@ -155,13 +188,15 @@ begin
 
   -- Solo completa el recordatorio si la fecha sigue siendo la misma.
   -- Si el usuario ya programó otra fecha, no se pisa el nuevo seguimiento.
-  update public.crm_leads
-  set
-    reminder_completed = true,
-    reminder_sent_at = now()
-  where id = v_lead_id
-    and reminder_at = v_reminder_at
-    and coalesce(reminder_completed, false) = false;
+  if v_alert_kind = 'exact' then
+    update public.crm_leads
+    set
+      reminder_completed = true,
+      reminder_sent_at = now()
+    where id = v_lead_id
+      and reminder_at = v_reminder_at
+      and coalesce(reminder_completed, false) = false;
+  end if;
 
   return true;
 end;
@@ -190,6 +225,7 @@ select
   d.lead_id,
   d.reminder_at,
   d.email_to,
+  d.alert_kind,
   d.status,
   d.claimed_at,
   d.sent_at,

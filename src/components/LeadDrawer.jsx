@@ -199,7 +199,7 @@ export default function LeadDrawer({ lead, company, currentUser, onClose, onSave
               <div className="followup-email-note">
                 <strong>📅 Fecha elegida desde esta página</strong>
                 <span>
-                  La fecha y hora se capturan manualmente aquí. n8n no las calcula ni las toma de Excel; únicamente enviará el correo a redfieldalex370@gmail.com cuando llegue el momento.
+                  La fecha y hora se capturan manualmente aquí. Se enviará una alerta 12 horas antes y otra en la fecha exacta a greenchimp.mx@gmail.com y deikrossredfield370@gmail.com.
                 </span>
               </div>
             </div>
