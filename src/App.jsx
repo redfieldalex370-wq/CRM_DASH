@@ -46,6 +46,18 @@ function addButtonLabel(companyId) {
   return '+ Nuevo lead';
 }
 
+function periodStart(period) {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  if (period === 'week') {
+    const daysSinceMonday = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - daysSinceMonday);
+  } else if (period === 'month') {
+    start.setDate(1);
+  }
+  return start;
+}
+
 export default function App() {
   const [session, setSession] = useState(loadSession);
   const [companies, setCompanies] = useState([]);
@@ -57,6 +69,7 @@ export default function App() {
   const [query, setQuery] = useState('');
   const [ownerFilter, setOwnerFilter] = useState('all');
   const [productFilter, setProductFilter] = useState('all');
+  const [timeFilter, setTimeFilter] = useState('all');
   const [toast, setToast] = useState('');
   const [loading, setLoading] = useState(Boolean(session));
   const [syncing, setSyncing] = useState(false);
@@ -69,6 +82,7 @@ export default function App() {
 
   const visibleLeads = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
+    const start = timeFilter === 'all' ? null : periodStart(timeFilter);
     return leads.filter((lead) => {
       const haystack = `${lead.name} ${lead.phone} ${lead.service} ${lead.classification} ${lead.lastMessage} ${lead.businessName || ''} ${lead.businessType || ''} ${lead.commercialStatus || ''} ${lead.escalationReason || ''}`.toLowerCase();
       const matchesOwner = ownerFilter === 'all' || lead.assignedTo === ownerFilter;
@@ -76,9 +90,12 @@ export default function App() {
         activeCompanyId !== 'green-chimp-express' ||
         productFilter === 'all' ||
         String(lead.classification || '').toUpperCase() === productFilter;
-      return haystack.includes(normalizedQuery) && matchesOwner && matchesProduct;
+      const leadDateValue = lead.firstContactAt || lead.createdAt || lead.lastContactAt;
+      const leadDate = leadDateValue ? new Date(leadDateValue) : null;
+      const matchesTime = !start || (leadDate && !Number.isNaN(leadDate.getTime()) && leadDate >= start);
+      return haystack.includes(normalizedQuery) && matchesOwner && matchesProduct && matchesTime;
     });
-  }, [activeCompanyId, leads, ownerFilter, productFilter, query]);
+  }, [activeCompanyId, leads, ownerFilter, productFilter, query, timeFilter]);
 
   function notify(message) {
     setToast(message);
@@ -173,6 +190,7 @@ export default function App() {
     setQuery('');
     setOwnerFilter('all');
     setProductFilter('all');
+    setTimeFilter('all');
   }
 
   async function moveLead(leadId, stageId) {
@@ -298,13 +316,13 @@ export default function App() {
   const automaticStageIds = new Set(stages.filter((stage) => stage.mode === 'automatic').map((stage) => stage.id));
   const manualStageIds = new Set(stages.filter((stage) => stage.mode === 'manual').map((stage) => stage.id));
   const metrics = {
-    total: leads.length,
-    automatic: leads.filter((lead) => automaticStageIds.has(lead.stageId)).length,
-    manual: leads.filter((lead) => manualStageIds.has(lead.stageId)).length,
-    stale: leads.filter((lead) => lead.lastContactAt && Date.now() - new Date(lead.lastContactAt).getTime() > 24 * 60 * 60 * 1000).length,
-    readyToPay: leads.filter((lead) => lead.stageId === 'listo_para_pago' || lead.readyToPay).length,
-    needsAdvisor: leads.filter((lead) => lead.requiresAdvisor).length,
-    clients: leads.filter((lead) => ['cliente', 'cliente_concretado'].includes(lead.stageId)).length,
+    total: visibleLeads.length,
+    automatic: visibleLeads.filter((lead) => automaticStageIds.has(lead.stageId)).length,
+    manual: visibleLeads.filter((lead) => manualStageIds.has(lead.stageId)).length,
+    stale: visibleLeads.filter((lead) => lead.lastContactAt && Date.now() - new Date(lead.lastContactAt).getTime() > 24 * 60 * 60 * 1000).length,
+    readyToPay: visibleLeads.filter((lead) => lead.stageId === 'listo_para_pago' || lead.readyToPay).length,
+    needsAdvisor: visibleLeads.filter((lead) => lead.requiresAdvisor).length,
+    clients: visibleLeads.filter((lead) => ['cliente', 'cliente_concretado'].includes(lead.stageId)).length,
   };
 
   return (
@@ -343,6 +361,12 @@ export default function App() {
                 <option value="OTRO">Otro</option>
               </select>
             )}
+            <select value={timeFilter} onChange={(event) => setTimeFilter(event.target.value)} aria-label="Filtrar por periodo">
+              <option value="today">Hoy</option>
+              <option value="week">Esta semana</option>
+              <option value="month">Este mes</option>
+              <option value="all">Todos</option>
+            </select>
             <select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)}>
               <option value="all">Todos los responsables</option>
               {owners.map((owner) => <option value={owner} key={owner}>{owner}</option>)}

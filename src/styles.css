@@ -60,8 +60,9 @@ code { background: #222630; padding: 2px 6px; border-radius: 5px; }
 .workspace-title { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 22px; }
 .workspace-title h1 { font-size: 34px; margin: 5px 0 3px; letter-spacing: -.03em; }
 .workspace-title p { margin: 0; color: var(--muted); }
-.filters { display: flex; gap: 10px; width: min(620px, 50vw); }
+.filters { display: flex; gap: 10px; width: min(940px, 62vw); }
 .filters input { min-width: 320px; }
+.filters select { min-width: 150px; }
 .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(180px, 1fr)); gap: 12px; margin-bottom: 22px; }
 .metric-grid article { background: linear-gradient(145deg, #171a20, #13151a); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 3px; }
 .metric-grid span, .metric-grid small { color: var(--muted); }
