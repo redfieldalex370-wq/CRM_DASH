@@ -176,6 +176,31 @@ function stageFromState(value) {
 }
 
 function resolveStage() {
+  const commercialEvidence = normalize([
+    cierre.final_text,
+    cierre.texto_cliente,
+    cierre.ultima_respuesta_bot,
+    validado.final_text,
+    validado.texto_cliente,
+    validado.ultima_respuesta_bot,
+    estado.ultima_respuesta_bot,
+    estado.ultimo_mensaje_usuario,
+    entrada.text
+  ].map(text).filter(Boolean).join(' '));
+
+  if (/link de pago|hacer el pago|listo para pagar|pagar y empezar|contratar|comenzar|empezar/.test(commercialEvidence)) {
+    return 'listo_para_pago';
+  }
+  if (/te escribe|te estuvo atendiendo|asesor|equipo comercial/.test(commercialEvidence)) {
+    return 'contactado';
+  }
+  if (/muy caro|se me hace caro|fuera de presupuesto|objecion/.test(commercialEvidence)) {
+    return 'objecion_precio';
+  }
+  if (/precio|cuanto cuesta|cotiza|paquete|arrancan en|desde\s*\$|\$\s*\d|\d[\d,.]*\s*(mxn|pesos|al mes|mensual)/.test(commercialEvidence)) {
+    return 'cotizado';
+  }
+
   const explicit = normalizeStage(first(
     cierre.kanban_stage,
     validado.kanban_stage,

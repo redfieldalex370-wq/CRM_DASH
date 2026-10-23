@@ -384,7 +384,9 @@ function conversationStage(companyKey, text, fallback = 'contactos_nuevos') {
   }
   if (companyKey === 'green-chimp-express') {
     if (/pago|contratar|comenzar|empezar/.test(value)) return 'listo_para_pago';
-    if (/precio|cuanto|cotiza|paquete/.test(value)) return 'cotizado';
+    if (/te escribe|te estuvo atendiendo|asesor|equipo comercial/.test(value)) return 'contactado';
+    if (/muy caro|se me hace caro|fuera de presupuesto|objecion/.test(value)) return 'objecion_precio';
+    if (/precio|cuanto|cotiza|paquete|arrancan en|desde\s*\$|\$\s*\d|\d[\d,.]*\s*(mxn|pesos|al mes|mensual)/.test(value)) return 'cotizado';
     if (value) return 'calificando';
   }
   return fallback || 'contactos_nuevos';
