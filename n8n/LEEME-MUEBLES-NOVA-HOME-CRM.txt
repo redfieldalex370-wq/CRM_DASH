@@ -5,8 +5,10 @@ MUEBLES NOVA HOME | CONEXIÓN AL CRM
 
 2. En el flujo "Muebles Nova Home", después de "Parser y Guardarraíl Nova Home1":
    - agrega un nodo Code y pega n8n/Preparar-Lead-Muebles-Nova-CRM.js
-   - agrega un nodo Postgres y selecciona la credencial del SUPABASE CENTRAL DEL CRM,
-     no la credencial "Supabase Nova Home".
+   - agrega un nodo Postgres y selecciona la credencial "Postgres account 3".
+     Esa es la misma base central donde el flujo ya hace la copia de mensajes de la
+     plataforma. No uses la credencial "Supabase Nova Home", porque esa conserva
+     únicamente el chat, memoria y pedidos operativos de Nova.
    - pega n8n/upsert-muebles-nova-home-crm.sql en Query.
    - pega el arreglo de Query Parameters que viene comentado arriba de esa consulta.
 
