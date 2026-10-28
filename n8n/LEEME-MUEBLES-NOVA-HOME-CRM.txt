@@ -1,0 +1,22 @@
+MUEBLES NOVA HOME | CONEXIÓN AL CRM
+
+1. En el Supabase CENTRAL del CRM, ejecuta:
+   supabase/activar-muebles-nova-home.sql
+
+2. En el flujo "Muebles Nova Home", después de "Parser y Guardarraíl Nova Home1":
+   - agrega un nodo Code y pega n8n/Preparar-Lead-Muebles-Nova-CRM.js
+   - agrega un nodo Postgres y selecciona la credencial del SUPABASE CENTRAL DEL CRM,
+     no la credencial "Supabase Nova Home".
+   - pega n8n/upsert-muebles-nova-home-crm.sql en Query.
+   - pega el arreglo de Query Parameters que viene comentado arriba de esa consulta.
+
+3. Conecta: Parser y Guardarraíl Nova Home1 -> Preparar Lead Muebles Nova CRM -> Upsert CRM.
+   Mantén también las conexiones actuales del Parser; este envío es adicional.
+
+4. Prueba con un WhatsApp de prueba. Debe crear/actualizar una tarjeta con origen
+   "WhatsApp Nova Home". Al mandar ficha se mueve a "Consultó producto"; al confirmar,
+   a "Pedido confirmado"; al elegir fecha, a "Entrega solicitada"; y al escalar,
+   a "Pendiente de asesor".
+
+Las columnas manuales son "Venta concretada" y "Cancelado". Si se mueve una tarjeta a
+una de ellas, el flujo no la regresará a una etapa automática.

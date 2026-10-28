@@ -52,6 +52,15 @@ const DEFAULT_STAGES_BY_COMPANY = {
     { stageKey: 'cliente_concretado', name: 'CLIENTE CONCRETADO', color: '#14b8a6', mode: 'manual', order: 8 },
     { stageKey: 'perdido', name: 'Perdido', color: '#ef4444', mode: 'manual', order: 9 },
   ],
+  'muebles-nova-home': [
+    { stageKey: 'contactos_nuevos', name: 'Contactos nuevos', color: '#64748b', mode: 'automatic', order: 1 },
+    { stageKey: 'consulto_producto', name: 'Consultó producto', color: '#3b82f6', mode: 'automatic', order: 2 },
+    { stageKey: 'pedido_confirmado', name: 'Pedido confirmado', color: '#8b5cf6', mode: 'automatic', order: 3 },
+    { stageKey: 'entrega_solicitada', name: 'Entrega solicitada', color: '#f59e0b', mode: 'automatic', order: 4 },
+    { stageKey: 'pendiente_asesor', name: 'Pendiente de asesor', color: '#06b6d4', mode: 'automatic', order: 5 },
+    { stageKey: 'venta_concretada', name: 'Venta concretada', color: '#22c55e', mode: 'manual', order: 6 },
+    { stageKey: 'cancelado', name: 'Cancelado', color: '#ef4444', mode: 'manual', order: 7 },
+  ],
 };
 
 function safeArray(value) {
@@ -162,6 +171,9 @@ function companyInterest(companyKey, row, raw, classification) {
   if (companyKey === 'especialidades-dentales') return dentalInterest(evidence);
   if (companyKey === 'zenda-cafe') return zendaInterest(evidence, classification, raw, row.kanban_stage);
   if (companyKey === 'dr-woolrich') return woolrichInterest(evidence);
+  if (companyKey === 'muebles-nova-home') {
+    return String(raw.producto || raw.producto_pedido || row.service || '').trim() || 'Consulta de muebles';
+  }
   if (companyKey === 'green-chimp-express' && classification) {
     const productNames = {
       CHATBOT: 'Chatbot',

@@ -24,12 +24,14 @@ function companyTitle(companyId) {
   if (companyId === 'dr-woolrich') return 'Seguimiento de pacientes';
   if (companyId === 'especialidades-dentales') return 'Seguimiento de valoraciones dentales';
   if (companyId === 'green-chimp-express') return 'Green Chimp Express · Productos y automatización';
+  if (companyId === 'muebles-nova-home') return 'Muebles Nova Home · Pedidos y entregas';
   return 'Seguimiento de leads';
 }
 
 function workspaceEyebrow(companyId) {
   if (companyId === 'green-chimp-express') return 'PIPELINE DE VENTAS';
   if (companyId === 'especialidades-dentales' || companyId === 'dr-woolrich') return 'SEGUIMIENTO DE PACIENTES';
+  if (companyId === 'muebles-nova-home') return 'PEDIDOS Y ENTREGAS';
   return 'EMBUDO COMERCIAL';
 }
 
@@ -37,12 +39,14 @@ function searchPlaceholder(companyId) {
   if (companyId === 'zenda-cafe') return 'Buscar cliente, teléfono o pedido';
   if (companyId === 'especialidades-dentales') return 'Buscar paciente, teléfono o valoración';
   if (companyId === 'green-chimp-express') return 'Buscar contacto, negocio, teléfono o producto';
+  if (companyId === 'muebles-nova-home') return 'Buscar cliente, teléfono, mueble o entrega';
   return 'Buscar paciente, teléfono o servicio';
 }
 
 function addButtonLabel(companyId) {
   if (companyId === 'dr-woolrich' || companyId === 'especialidades-dentales') return '+ Nuevo paciente';
   if (companyId === 'zenda-cafe') return '+ Nuevo contacto';
+  if (companyId === 'muebles-nova-home') return '+ Nuevo pedido';
   return '+ Nuevo lead';
 }
 

@@ -15,6 +15,7 @@ export default function AddLeadModal({ company, onClose, onCreate }) {
   const isZenda = company.id === 'zenda-cafe';
   const isExpress = company.id === 'green-chimp-express';
   const isDental = company.id === 'especialidades-dentales';
+  const isNova = company.id === 'muebles-nova-home';
   const classifications = isExpress ? EXPRESS_CLASSIFICATIONS : [];
   const [form, setForm] = useState({
     name: '', phone: '', service: '', classification: '', stageId: stages[0]?.id || '', assignedTo: '', source: 'WhatsApp', lastMessage: '',
@@ -36,8 +37,8 @@ export default function AddLeadModal({ company, onClose, onCreate }) {
     onCreate(form);
   }
 
-  const title = isDental ? 'Crear paciente' : isZenda ? 'Crear contacto' : 'Crear lead';
-  const serviceLabel = isZenda ? 'Interés / solicitud' : isExpress ? 'Giro / necesidad' : isDental ? 'Motivo / valoración' : 'Servicio';
+  const title = isDental ? 'Crear paciente' : isZenda ? 'Crear contacto' : isNova ? 'Crear pedido' : 'Crear lead';
+  const serviceLabel = isZenda ? 'Interés / solicitud' : isExpress ? 'Giro / necesidad' : isNova ? 'Mueble / producto' : isDental ? 'Motivo / valoración' : 'Servicio';
 
   return (
     <Modal title={title} onClose={onClose}>
@@ -58,7 +59,7 @@ export default function AddLeadModal({ company, onClose, onCreate }) {
         <label>Etapa<select value={form.stageId} onChange={(event) => update('stageId', event.target.value)}>{stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}</select></label>
         <label className="span-two">Mensaje inicial<textarea rows="4" value={form.lastMessage} onChange={(event) => update('lastMessage', event.target.value)} /></label>
         {error && <div className="form-error span-two">{error}</div>}
-        <div className="form-actions span-two"><button type="button" className="button ghost" onClick={onClose}>Cancelar</button><button className="button primary">{isDental ? 'Crear paciente' : isZenda ? 'Crear contacto' : 'Crear lead'}</button></div>
+        <div className="form-actions span-two"><button type="button" className="button ghost" onClick={onClose}>Cancelar</button><button className="button primary">{isDental ? 'Crear paciente' : isZenda ? 'Crear contacto' : isNova ? 'Crear pedido' : 'Crear lead'}</button></div>
       </form>
     </Modal>
   );

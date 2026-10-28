@@ -36,6 +36,7 @@ export default function LeadDrawer({ lead, company, currentUser, onClose, onSave
   const isZenda = company.id === 'zenda-cafe';
   const isDental = company.id === 'especialidades-dentales';
   const isExpress = company.id === 'green-chimp-express';
+  const isNova = company.id === 'muebles-nova-home';
   const classificationOptions = isExpress ? EXPRESS_CLASSIFICATIONS : [];
   const reminderDate = draft.reminderAt ? new Date(draft.reminderAt) : null;
   const reminderIsValid = reminderDate && !Number.isNaN(reminderDate.getTime());
@@ -57,14 +58,14 @@ export default function LeadDrawer({ lead, company, currentUser, onClose, onSave
     setComment('');
   }
 
-  const serviceLabel = isZenda ? 'Interés / solicitud' : isExpress ? 'Giro / necesidad' : isDental ? 'Motivo / valoración' : 'Servicio';
+  const serviceLabel = isZenda ? 'Interés / solicitud' : isExpress ? 'Giro / necesidad' : isNova ? 'Mueble / producto' : isDental ? 'Motivo / valoración' : 'Servicio';
 
   return (
     <div className="drawer-backdrop" onMouseDown={onClose}>
       <aside className="lead-drawer" onMouseDown={(event) => event.stopPropagation()}>
         <header className="drawer-header">
           <div>
-            <span className="eyebrow">{isDental ? 'FICHA DEL PACIENTE' : isExpress ? 'FICHA COMERCIAL' : 'FICHA DEL LEAD'}</span>
+            <span className="eyebrow">{isDental ? 'FICHA DEL PACIENTE' : isExpress ? 'FICHA COMERCIAL' : isNova ? 'FICHA DE PEDIDO' : 'FICHA DEL LEAD'}</span>
             <h2>{draft.name}</h2>
             <p>{draft.phone || 'Sin teléfono'}</p>
           </div>
@@ -221,6 +222,19 @@ export default function LeadDrawer({ lead, company, currentUser, onClose, onSave
                 <div><span>Último contacto</span><strong>{displayDate(draft.lastSheetContactAt || draft.lastContactAt)}</strong></div>
               </div>
               {draft.escalationReason && <div className="express-note"><span>Motivo de escalación</span><p>{draft.escalationReason}</p></div>}
+            </section>
+          )}
+
+          {isNova && (
+            <section className="drawer-section">
+              <div className="section-title-row"><h3>Datos del pedido</h3><span>{draft.rawPayload?.nova_estado || 'En conversación'}</span></div>
+              <div className="express-info-grid">
+                <div><span>Mueble</span><strong>{draft.rawPayload?.producto || draft.service || 'Por definir'}</strong></div>
+                <div><span>Fecha solicitada</span><strong>{draft.rawPayload?.fecha_entrega_solicitada || 'Sin fecha'}</strong></div>
+                <div><span>Estado de entrega</span><strong>{draft.rawPayload?.nova_estado || 'Sin confirmar'}</strong></div>
+                <div><span>Fichas enviadas</span><strong>{(draft.rawPayload?.fichas_enviadas || []).join(', ') || 'Ninguna'}</strong></div>
+              </div>
+              {draft.rawPayload?.motivo_escalamiento && <div className="express-note"><span>Motivo de escalación</span><p>{draft.rawPayload.motivo_escalamiento}</p></div>}
             </section>
           )}
 
