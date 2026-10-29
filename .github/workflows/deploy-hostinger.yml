@@ -56,3 +56,13 @@ jobs:
           git commit -m "Deploy ${GITHUB_SHA}"
           git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push --force origin hostinger
+
+      - name: Deploy production site to Hostinger
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ftp://46.202.156.115
+          username: u352513768.lightsteelblue-herring-860802.hostingersite.com
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/
+          server-dir: ./public_html/
+          dangerous-clean-slate: false
