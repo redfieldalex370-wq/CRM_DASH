@@ -30,10 +30,6 @@ export default function Login({ onLogin }) {
         <div className="brand-orbit"><span>GC</span></div>
         <span className="eyebrow">GREEN CHIMP CRM</span>
         <h1>WhatsApp abre la puerta. El Kanban cuida el recorrido.</h1>
-        <p>Los leads enviados por n8n aparecen en Supabase y avanzan por el embudo comercial sin perder el seguimiento humano.</p>
-        <div className="login-flow">
-          <span>WhatsApp</span><b>→</b><span>Google Sheets</span><b>→</b><span>n8n</span><b>→</b><span>Supabase</span><b>→</b><span>Kanban</span>
-        </div>
       </section>
 
       <form className="login-card" onSubmit={submit}>
