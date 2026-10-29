@@ -57,12 +57,15 @@ jobs:
           git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push --force origin hostinger
 
-      - name: Deploy production site to Hostinger
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Deploy production site to Hostinger via SSH
+        if: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY != '' }}
+        uses: appleboy/scp-action@v1.0.0
         with:
-          server: 46.202.156.115
-          username: u352513768.lightsteelblue-herring-860802.hostingersite.com
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./dist/
-          server-dir: ./public_html/
-          dangerous-clean-slate: false
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USERNAME }}
+          key: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          source: "dist/*"
+          target: "/home/${{ secrets.HOSTINGER_SSH_USERNAME }}/domains/lightsteelblue-herring-860802.hostingersite.com/public_html/"
+          strip_components: 1
+          overwrite: true
