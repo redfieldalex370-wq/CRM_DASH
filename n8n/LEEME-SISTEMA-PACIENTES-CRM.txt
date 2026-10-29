@@ -1,0 +1,22 @@
+SISTEMA PACIENTES | CONEXION AL CRM
+
+1. En el Supabase CENTRAL del CRM, ejecutar una vez:
+   supabase/activar-sistema-pacientes.sql
+
+2. En n8n, después de "Parser Salida", agregar un nodo Code:
+   Nombre: Preparar Lead Sistema Pacientes CRM
+   Modo: Run Once for Each Item
+   Código: n8n/Preparar-Lead-Sistema-Pacientes-CRM.js
+
+3. Conectarlo a un nodo Postgres nuevo:
+   Nombre: Guardar lead CRM Sistema Pacientes
+   Credencial: la del SUPABASE CENTRAL DEL CRM (no SUPABASE ni Postgres account 3).
+   Operación: Execute Query
+   Query: n8n/upsert-sistema-pacientes-crm.sql
+   Query Parameters: usar exactamente la expresión comentada al inicio del SQL.
+
+4. Conectar:
+   Parser Salida -> Preparar Lead Sistema Pacientes CRM -> Guardar lead CRM Sistema Pacientes
+
+El nodo conserva las columnas manuales: Contactado por asesor y Cliente activo.
+No conectarlo después de "Guardar Lead" porque Google Sheets no necesita esperar al CRM.

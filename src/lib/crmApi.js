@@ -7,6 +7,7 @@ const SOURCE_PHONE_BY_COMPANY = {
   'dr-woolrich': '1289334717595109',
   'especialidades-dentales': '620774694457849',
   'green-chimp-express': '1240006745865858',
+  'sistema-pacientes': '1300475946479693',
   'zenda-cafe': '1272209879317604',
 };
 
@@ -60,6 +61,15 @@ const DEFAULT_STAGES_BY_COMPANY = {
     { stageKey: 'pendiente_asesor', name: 'Pendiente de asesor', color: '#06b6d4', mode: 'automatic', order: 5 },
     { stageKey: 'venta_concretada', name: 'Venta concretada', color: '#22c55e', mode: 'manual', order: 6 },
     { stageKey: 'cancelado', name: 'Cancelado', color: '#ef4444', mode: 'manual', order: 7 },
+  ],
+  'sistema-pacientes': [
+    { stageKey: 'contactos_nuevos', name: 'Contactos nuevos', color: '#64748b', mode: 'automatic', order: 1 },
+    { stageKey: 'calificado', name: 'Calificado', color: '#3b82f6', mode: 'automatic', order: 2 },
+    { stageKey: 'link_enviado', name: 'Link enviado', color: '#8b5cf6', mode: 'automatic', order: 3 },
+    { stageKey: 'cita_agendada', name: 'Cita agendada', color: '#10b981', mode: 'automatic', order: 4 },
+    { stageKey: 'contactado', name: 'Contactado por asesor', color: '#06b6d4', mode: 'manual', order: 5 },
+    { stageKey: 'cliente_activo', name: 'Cliente activo', color: '#22c55e', mode: 'manual', order: 6 },
+    { stageKey: 'no_interesado', name: 'No interesado', color: '#ef4444', mode: 'automatic', order: 7 },
   ],
 };
 

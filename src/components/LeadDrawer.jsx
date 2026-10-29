@@ -37,6 +37,7 @@ export default function LeadDrawer({ lead, company, currentUser, onClose, onSave
   const isDental = company.id === 'especialidades-dentales';
   const isExpress = company.id === 'green-chimp-express';
   const isNova = company.id === 'muebles-nova-home';
+  const isSistemaPacientes = company.id === 'sistema-pacientes';
   const classificationOptions = isExpress ? EXPRESS_CLASSIFICATIONS : [];
   const reminderDate = draft.reminderAt ? new Date(draft.reminderAt) : null;
   const reminderIsValid = reminderDate && !Number.isNaN(reminderDate.getTime());
@@ -58,14 +59,14 @@ export default function LeadDrawer({ lead, company, currentUser, onClose, onSave
     setComment('');
   }
 
-  const serviceLabel = isZenda ? 'Interés / solicitud' : isExpress ? 'Giro / necesidad' : isNova ? 'Mueble / producto' : isDental ? 'Motivo / valoración' : 'Servicio';
+  const serviceLabel = isZenda ? 'Interés / solicitud' : isExpress ? 'Giro / necesidad' : isNova ? 'Mueble / producto' : isSistemaPacientes ? 'Especialidad / necesidad' : isDental ? 'Motivo / valoración' : 'Servicio';
 
   return (
     <div className="drawer-backdrop" onMouseDown={onClose}>
       <aside className="lead-drawer" onMouseDown={(event) => event.stopPropagation()}>
         <header className="drawer-header">
           <div>
-            <span className="eyebrow">{isDental ? 'FICHA DEL PACIENTE' : isExpress ? 'FICHA COMERCIAL' : isNova ? 'FICHA DE PEDIDO' : 'FICHA DEL LEAD'}</span>
+            <span className="eyebrow">{isDental ? 'FICHA DEL PACIENTE' : isExpress || isSistemaPacientes ? 'FICHA COMERCIAL' : isNova ? 'FICHA DE PEDIDO' : 'FICHA DEL LEAD'}</span>
             <h2>{draft.name}</h2>
             <p>{draft.phone || 'Sin teléfono'}</p>
           </div>

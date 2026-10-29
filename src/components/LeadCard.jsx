@@ -29,9 +29,10 @@ export default function LeadCard({ lead, stage, onOpen, onDragStart }) {
   const extraTags = (lead.tags || []).filter((tag) => tag !== lead.classification).slice(0, 2);
   const isExpress = lead.companyId === 'green-chimp-express';
   const isNova = lead.companyId === 'muebles-nova-home';
+  const isSistemaPacientes = lead.companyId === 'sistema-pacientes';
   const primaryService = isExpress
     ? (lead.businessName || lead.businessType || lead.service || 'Negocio por definir')
-    : (lead.service || (isNova ? 'Mueble por definir' : 'Interés por definir'));
+    : (lead.service || (isNova ? 'Mueble por definir' : isSistemaPacientes ? 'Especialidad por definir' : 'Interés por definir'));
   const reminderDate = lead.reminderAt ? new Date(lead.reminderAt) : null;
   const hasPendingReminder = reminderDate && !Number.isNaN(reminderDate.getTime()) && !lead.reminderCompleted;
   const reminderOverdue = hasPendingReminder && reminderDate.getTime() <= Date.now();
