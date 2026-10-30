@@ -1,0 +1,117 @@
+{
+  "name": "Migrar histórico Sistema Pacientes al CRM",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f4f98acd-b5e1-452e-a5bf-38c647954d2f",
+      "name": "Ejecutar migración una vez",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1AvIh0wZjhRhGU7zedkKuXkx0FABwpbi-eYR2Lq1O66c",
+          "mode": "list",
+          "cachedResultName": "Leads Sistema Pacientes",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1AvIh0wZjhRhGU7zedkKuXkx0FABwpbi-eYR2Lq1O66c/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "leads",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "44a735da-74ac-4ab6-a741-7d9edb8472ef",
+      "name": "Leer histórico Sistema Pacientes",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -416,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "tUAr2cUSx78L9wtq",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// SISTEMA PACIENTES | MIGRAR HISTORIAL DE GOOGLE SHEETS AL CRM\n// Lee todas las filas de la hoja \"leads\" y devuelve una tarjeta por contacto.\nconst text = (value) => String(value ?? '').trim();\nconst digits = (value) => text(value).replace(/\\D/g, '');\n\nreturn $input.all().flatMap(({ json: fila }) => {\n  const waId = digits(fila.wa_id || fila.telefono);\n  const subscriberId = Number(waId);\n  if (!Number.isSafeInteger(subscriberId)) return [];\n\n  const estado = text(fila.estado).toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n  let stage = 'contactos_nuevos';\n  if (estado === 'CALIFICADO') stage = 'calificado';\n  else if (estado === 'LINK_ENVIADO') stage = 'link_enviado';\n  else if (estado === 'AGENDO') stage = 'cita_agendada';\n  else if (estado === 'FRIO') stage = 'no_interesado';\n\n  const specialty = text(fila.especialidad);\n  const businessType = text(fila.tipo_negocio);\n  return [{ json: {\n    p_company_key: 'sistema-pacientes',\n    p_subscriber_id: subscriberId,\n    p_whatsapp_phone: waId,\n    p_nombre_paciente: text(fila.nombre) || `Contacto ${waId.slice(-4)}`,\n    p_service: specialty || businessType || 'Sistema de captación de pacientes',\n    p_kanban_stage: stage,\n    p_source: text(fila.origen) || 'Histórico Google Sheets',\n    p_ultimo_mensaje_cliente: text(fila.ultimo_mensaje),\n    p_ultimo_mensaje_bot: text(fila.ultima_respuesta_bot),\n    p_last_activity_at: text(fila.ultimo_mensaje_ts) || text(fila.fecha) || new Date().toISOString(),\n    p_raw_payload: {\n      especialidad: specialty || null, tipo_negocio: businessType || null,\n      ciudad: text(fila.ciudad) || null, tratamiento_principal: text(fila.tratamiento_principal) || null,\n      ticket_aprox: text(fila.ticket_aprox) || null, recomendacion: text(fila.recomendacion) || null,\n      estado_sistema_pacientes: text(fila.estado) || 'NUEVO', lead_caliente: text(fila.lead_caliente) || 'no',\n      link_enviado_ts: text(fila.link_enviado_ts) || null, fuente: 'Histórico Google Sheets'\n    }\n  } }];\n});"
+      },
+      "id": "e14ea408-4272-46dd-ad20-9b86f5a5663d",
+      "name": "Preparar histórico para CRM",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into public.crm_leads (\n  company_key, subscriber_id, whatsapp_phone, nombre_paciente,\n  service, kanban_stage, stage_origin, stage_locked, source,\n  ultimo_mensaje_cliente, ultimo_mensaje_bot, last_activity_at,\n  raw_payload, source_updated_at\n) values (\n  $1, $2::bigint, nullif($3, ''), nullif($4, ''),\n  nullif($5, ''), $6, 'n8n', false, nullif($7, ''),\n  nullif($8, ''), nullif($9, ''), $10::timestamptz,\n  coalesce($11::jsonb, '{}'::jsonb), now()\n)\non conflict (company_key, subscriber_id) do update set\n  whatsapp_phone = excluded.whatsapp_phone,\n  nombre_paciente = coalesce(nullif(excluded.nombre_paciente, ''), crm_leads.nombre_paciente),\n  service = coalesce(nullif(excluded.service, ''), crm_leads.service),\n  kanban_stage = case when crm_leads.stage_locked then crm_leads.kanban_stage else excluded.kanban_stage end,\n  stage_origin = case when crm_leads.stage_locked then crm_leads.stage_origin else 'n8n' end,\n  source = coalesce(nullif(excluded.source, ''), crm_leads.source),\n  ultimo_mensaje_cliente = coalesce(nullif(excluded.ultimo_mensaje_cliente, ''), crm_leads.ultimo_mensaje_cliente),\n  ultimo_mensaje_bot = coalesce(nullif(excluded.ultimo_mensaje_bot, ''), crm_leads.ultimo_mensaje_bot),\n  last_activity_at = greatest(crm_leads.last_activity_at, excluded.last_activity_at),\n  raw_payload = crm_leads.raw_payload || excluded.raw_payload,\n  source_updated_at = now(), updated_at = now();",
+        "options": {
+          "queryReplacement": "={{ [\n  $json.p_company_key, $json.p_subscriber_id, $json.p_whatsapp_phone,\n  $json.p_nombre_paciente, $json.p_service, $json.p_kanban_stage,\n  $json.p_source, $json.p_ultimo_mensaje_cliente, $json.p_ultimo_mensaje_bot,\n  $json.p_last_activity_at, JSON.stringify($json.p_raw_payload)\n] }}"
+        }
+      },
+      "id": "3f0e3c3a-4ca0-45f0-a679-0c677dc1787d",
+      "name": "Crear o actualizar tarjetas CRM",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        96,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w9bHZ08UyzUUO0oK",
+          "name": "Postgres account 3"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Ejecutar migración una vez": {
+      "main": [
+        {
+          "node": "Leer histórico Sistema Pacientes",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    },
+    "Leer histórico Sistema Pacientes": {
+      "main": [
+        {
+          "node": "Preparar histórico para CRM",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    },
+    "Preparar histórico para CRM": {
+      "main": [
+        {
+          "node": "Crear o actualizar tarjetas CRM",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
